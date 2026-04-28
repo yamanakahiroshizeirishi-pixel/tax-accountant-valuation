@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>税理士事務所 承継・M&A 価格診断</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --blue:#2b6cb0;--blue-light:#ebf8ff;--blue-mid:#bee3f8;
+  --green:#276749;--green-bg:#f0fff4;--green-mid:#9ae6b4;
+  --orange:#c05621;--orange-bg:#fffaf0;--orange-mid:#fbd38d;
+  --red:#9b2c2c;--red-bg:#fff5f5;
+  --purple:#553c9a;--purple-bg:#faf5ff;
+  --gray:#4a5568;--gray-light:#f7fafc;--gray-border:#e2e8f0;
+  --shadow:0 4px 24px rgba(0,0,0,.10);
+}
+html,body{height:100%;font-family:'Hiragino Kaku Gothic ProN','Meiryo','Yu Gothic',sans-serif;background:#f0f4f8;color:#2d3748;}
+.screen{display:none;min-height:100vh;padding:40px 20px;}
+.screen.active{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.card{background:#fff;border-radius:18px;box-shadow:var(--shadow);width:100%;max-width:540px;padding:40px 36px;}
+.brand{font-size:12px;letter-spacing:.12em;color:#718096;text-transform:uppercase;margin-bottom:10px;}
+.main-title{font-size:22px;font-weight:800;color:#1a202c;line-height:1.3;margin-bottom:8px;}
+.main-sub{font-size:14px;color:#718096;margin-bottom:28px;line-height:1.7;}
+.steps{display:flex;gap:8px;margin-bottom:28px;}
+.step-dot{width:8px;height:8px;border-radius:50%;background:#e2e8f0;transition:.3s;}
+.step-dot.active{background:var(--blue);transform:scale(1.3);}
+.step-dot.done{background:#90cdf4;}
+.q-label{font-size:13px;font-weight:700;color:#718096;letter-spacing:.06em;margin-bottom:6px;}
+.q-title{font-size:18px;font-weight:800;color:#1a202c;margin-bottom:6px;line-height:1.4;}
+.q-sub{font-size:12px;color:#718096;margin-bottom:18px;line-height:1.6;padding:8px 12px;background:#f7fafc;border-radius:8px;}
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:#e2e8f0;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 2px 8px rgba(43,108,176,.35);}
+.slider-value{text-align:center;font-size:28px;font-weight:800;color:var(--blue);margin:12px 0 4px;}
+.slider-unit{text-align:center;font-size:13px;color:#a0aec0;}
+.slider-ticks{display:flex;justify-content:space-between;font-size:10px;color:#a0aec0;margin-top:4px;}
+.stability-display{background:var(--blue-light);border:2px solid var(--blue-mid);border-radius:14px;padding:16px 20px;margin:14px 0 8px;text-align:center;transition:.3s;}
+.stability-display .sd-icon{font-size:28px;margin-bottom:5px;}
+.stability-display .sd-name{font-size:16px;font-weight:800;color:#1a202c;}
+.stability-display .sd-desc{font-size:12px;color:#4a5568;margin-top:3px;line-height:1.5;}
+.num-input-wrap{display:flex;align-items:center;gap:10px;margin-top:16px;}
+.num-input-wrap label{font-size:13px;color:#718096;white-space:nowrap;}
+.num-input{border:1.5px solid var(--gray-border);border-radius:8px;padding:8px 14px;font-size:18px;font-weight:700;color:#1a202c;width:140px;text-align:right;outline:none;}
+.num-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(43,108,176,.15);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 28px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;border:none;transition:.2s;width:100%;margin-top:24px;}
+.btn-primary{background:var(--blue);color:#fff;}
+.btn-primary:hover{background:#2c5282;transform:translateY(-1px);box-shadow:0 6px 20px rgba(43,108,176,.35);}
+.btn-secondary{background:var(--gray-light);color:var(--gray);margin-top:10px;}
+.btn-secondary:hover{background:#e2e8f0;}
+.btn-sm{padding:10px 20px;font-size:14px;width:auto;margin-top:0;}
+
+/* RESULTS */
+#results-screen{align-items:stretch;padding:24px 16px;justify-content:flex-start;}
+.results-inner{max-width:940px;width:100%;margin:0 auto;}
+.results-header{margin-bottom:24px;}
+.results-header h2{font-size:22px;font-weight:800;color:#1a202c;}
+.results-header p{font-size:14px;color:#718096;margin-top:4px;}
+
+/* Price highlight */
+.price-highlight{background:linear-gradient(135deg,#2b6cb0,#553c9a);border-radius:16px;padding:26px 28px;margin-bottom:24px;color:#fff;text-align:center;}
+.price-highlight .ph-label{font-size:12px;letter-spacing:.1em;opacity:.8;margin-bottom:8px;}
+.price-highlight .ph-price{font-size:44px;font-weight:900;line-height:1;margin-bottom:6px;}
+.price-highlight .ph-unit{font-size:14px;opacity:.75;margin-top:2px;}
+.price-highlight .ph-range{font-size:13px;opacity:.85;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.25);}
+
+/* Verdict */
+.verdict{border-radius:14px;padding:22px 26px;margin-bottom:24px;display:flex;align-items:flex-start;gap:16px;}
+.verdict-icon{font-size:40px;line-height:1;flex-shrink:0;}
+.verdict-text .v-tag{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;}
+.verdict-text .v-title{font-size:20px;font-weight:800;line-height:1.3;margin-bottom:6px;}
+.verdict-text .v-body{font-size:14px;line-height:1.7;}
+.verdict.top{background:#faf5ff;color:#553c9a;}.verdict.top .v-tag{color:#6b46c1;}
+.verdict.high{background:var(--green-bg);color:var(--green);}.verdict.high .v-tag{color:#276749;}
+.verdict.mid{background:var(--blue-light);color:#2c5282;}.verdict.mid .v-tag{color:#2b6cb0;}
+.verdict.low{background:var(--orange-bg);color:var(--orange);}.verdict.low .v-tag{color:#c05621;}
+.verdict.family{background:var(--gray-light);color:#2d3748;}.verdict.family .v-tag{color:#4a5568;}
+
+/* 3-method comparison */
+.section-title{font-size:15px;font-weight:700;color:#2d3748;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.section-title::before{content:'';display:block;width:4px;height:18px;background:var(--blue);border-radius:2px;}
+.method-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
+.method-card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.07);border-top:4px solid #e2e8f0;}
+.method-card.ev{border-top-color:#553c9a;}
+.method-card.per{border-top-color:#276749;}
+.method-card.rev{border-top-color:#2b6cb0;}
+.method-card .mc-tag{font-size:11px;font-weight:700;color:#718096;margin-bottom:6px;}
+.method-card .mc-price{font-size:22px;font-weight:800;color:#1a202c;margin-bottom:4px;}
+.method-card .mc-unit{font-size:11px;color:#718096;}
+.method-card .mc-detail{font-size:11px;color:#4a5568;margin-top:8px;line-height:1.6;border-top:1px solid #e2e8f0;padding-top:8px;}
+.mc-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;margin-top:6px;}
+.badge-purple{background:#e9d8fd;color:#553c9a;}
+.badge-green{background:#c6f6d5;color:#276749;}
+.badge-blue{background:#bee3f8;color:#2b6cb0;}
+.badge-orange{background:#feebc8;color:#c05621;}
+.badge-gray{background:#e2e8f0;color:#4a5568;}
+.badge-red{background:#fed7d7;color:#9b2c2c;}
+
+/* Succession comparison */
+.succession-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
+.succ-card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.07);text-align:center;border-top:4px solid #e2e8f0;}
+.succ-card.ma-card{border-top-color:#553c9a;}
+.succ-card.gift-card{border-top-color:#c05621;}
+.succ-card.souzoku-card{border-top-color:#276749;}
+.succ-card .sc-icon{font-size:24px;margin-bottom:8px;}
+.succ-card .sc-method{font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px;}
+.succ-card .sc-amount{font-size:20px;font-weight:800;color:#1a202c;margin-bottom:4px;}
+.succ-card .sc-note{font-size:11px;color:#718096;line-height:1.5;}
+
+/* Heatmap */
+.heatmap-card{background:#fff;border-radius:14px;padding:24px;box-shadow:0 2px 10px rgba(0,0,0,.07);margin-bottom:24px;overflow-x:auto;}
+.heatmap-outer{display:flex;gap:0;min-width:600px;}
+.y-axis-label{writing-mode:vertical-rl;text-orientation:upright;font-size:12px;font-weight:600;color:#4a5568;margin-right:6px;display:flex;align-items:center;white-space:nowrap;}
+.y-ticks{display:flex;flex-direction:column;margin-right:6px;}
+.y-tick{font-size:10px;color:#4a5568;text-align:right;white-space:nowrap;display:flex;align-items:center;padding-right:4px;}
+.table-area{flex:1;display:flex;flex-direction:column;}
+.heatmap-grid{display:grid;gap:2px;}
+.hm-cell{border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:default;transition:.15s;position:relative;}
+.hm-cell.user-cell{z-index:10;box-shadow:0 0 0 3px #1a202c,0 0 0 5px #fff;transform:scale(1.08);}
+.cell-val{font-size:10px;font-weight:700;line-height:1.3;text-align:center;}
+.user-marker{position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:14px;line-height:1;}
+.x-ticks{display:grid;gap:2px;margin-top:4px;}
+.x-tick{font-size:10px;color:#4a5568;text-align:center;line-height:1.3;}
+.x-axis-label{text-align:center;font-size:12px;font-weight:600;color:#4a5568;margin-top:8px;}
+.legend-wrap{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.legend-label{font-size:11px;color:#718096;}
+.legend-bar{display:flex;height:12px;border-radius:3px;overflow:hidden;width:160px;}
+.legend-bar div{flex:1;}
+
+/* Tips */
+.tips{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;}
+.tip{background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 2px 10px rgba(0,0,0,.07);border-left:4px solid #bee3f8;}
+.tip.orange{border-left-color:#fbd38d;}
+.tip.green{border-left-color:#9ae6b4;}
+.tip.purple{border-left-color:#d6bcfa;}
+.tip .t-head{font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px;}
+.tip .t-body{font-size:13px;color:#2d3748;line-height:1.65;}
+.restart-row{display:flex;justify-content:center;margin-top:4px;}
+.source-card{background:#fff;border-radius:14px;padding:22px 26px;box-shadow:0 2px 10px rgba(0,0,0,.07);margin-bottom:24px;font-size:13px;color:#4a5568;line-height:1.9;}
+.source-item{margin-bottom:6px;}
+.source-warn{margin-top:12px;padding:12px 14px;background:#fffbeb;border-radius:8px;border-left:3px solid #f6ad55;font-size:12px;color:#744210;line-height:1.7;}
+.tooltip{position:fixed;background:rgba(26,32,44,.95);color:#fff;padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.7;pointer-events:none;z-index:999;max-width:240px;box-shadow:0 4px 20px rgba(0,0,0,.3);display:none;}
+.tooltip strong{font-size:13px;display:block;margin-bottom:4px;color:#90cdf4;}
+@media(max-width:600px){
+  .method-grid,.succession-grid{grid-template-columns:1fr;}
+  .tips{grid-template-columns:1fr;}
+  .card{padding:28px 20px;}
+}
+</style>
+</head>
+<body>
+
+<!-- WELCOME -->
+<div class="screen active" id="welcome-screen">
+  <div class="card">
+    <div class="brand">Tax Office Valuation</div>
+    <h1 class="main-title">税理士事務所<br>承継・M&amp;A 価格診断</h1>
+    <p class="main-sub">6つの質問に答えるだけで、国のM&amp;A支援機関の算出方法（EV/EBITDA・PER・取引事例）に基づいた売却適正額と、各承継方法の税負担を試算します。</p>
+    <div style="background:#f7fafc;border-radius:12px;padding:16px 18px;font-size:13px;color:#4a5568;line-height:1.9;margin-bottom:8px;">
+      <div>📋 <strong>質問①</strong> 年間売上（年商）</div>
+      <div>📋 <strong>質問②</strong> 営業利益率（手残り率）</div>
+      <div>📋 <strong>質問③</strong> 顧客（顧問先）数</div>
+      <div>📋 <strong>質問④</strong> 開業年数</div>
+      <div>📋 <strong>質問⑤</strong> 職員数</div>
+      <div>📋 <strong>質問⑥</strong> 顧客の安定性</div>
+      <div style="margin-top:6px;font-size:12px;color:#a0aec0;">※ 算出額は概算です。実際の承継・売却は専門家にご相談ください</div>
+    </div>
+    <button class="btn btn-primary" onclick="goTo('q1-screen')">診断をはじめる →</button>
+  </div>
+</div>
+
+<!-- Q1 年商 -->
+<div class="screen" id="q1-screen">
+  <div class="card">
+    <div class="steps"><div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div></div>
+    <div class="q-label">質問 1 / 6</div>
+    <div class="q-title">事務所の年商は<br>いくらですか？</div>
+    <div class="slider-value" id="rev-display">800万円</div>
+    <div class="slider-unit">年商（万円）</div>
+    <div style="margin-top:16px;"><input type="range" id="rev-slider" min="50" max="6000" step="50" value="800" oninput="updateRevDisplay(this.value)"></div>
+    <div class="slider-ticks"><span>50万</span><span>1,500万</span><span>3,000万</span><span>4,500万</span><span>6,000万+</span></div>
+    <div class="num-input-wrap" style="margin-top:20px;">
+      <label>または直接入力：</label>
+      <input type="number" class="num-input" id="rev-input" value="800" min="0" max="99999" oninput="syncRevSlider(this.value)">
+      <span style="font-size:13px;color:#718096;">万円</span>
+    </div>
+    <button class="btn btn-primary" onclick="goTo('q2-screen')">次へ →</button>
+    <button class="btn btn-secondary" onclick="goTo('welcome-screen')">← 戻る</button>
+  </div>
+</div>
+
+<!-- Q2 営業利益率 -->
+<div class="screen" id="q2-screen">
+  <div class="card">
+    <div class="steps"><div class="step-dot done"></div><div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div></div>
+    <div class="q-label">質問 2 / 6</div>
+    <div class="q-title">営業利益率は<br>どのくらいですか？</div>
+    <div class="q-sub">💡 売上から人件費・家賃・経費をすべて引いた後に手元に残る割合です。税理士事務所の平均は20〜35%程度です。</div>
+    <div class="slider-value" id="margin-display">25%</div>
+    <div class="slider-unit">営業利益率</div>
+    <div style="margin-top:16px;"><input type="range" id="margin-slider" min="0" max="60" step="1" value="25" oninput="updateMarginDisplay(this.value)"></div>
+    <div class="slider-ticks"><span>0%</span><span>15%</span><span>30%</span><span>45%</span><span>60%+</span></div>
+    <div style="margin-top:14px;background:#f7fafc;border-radius:8px;padding:10px 14px;font-size:13px;color:#4a5568;">
+      営業利益（概算）：<strong id="profit-calc" style="color:var(--blue);">200万円</strong>
+    </div>
+    <button class="btn btn-primary" onclick="goTo('q3-screen')">次へ →</button>
+    <button class="btn btn-secondary" onclick="goTo('q1-screen')">← 戻る</button>
+  </div>
+</div>
+
+<!-- Q3 顧客数 -->
+<div class="screen" id="q3-screen">
+  <div class="card">
+    <div class="steps"><div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div></div>
+    <div class="q-label">質問 3 / 6</div>
+    <div class="q-title">現在の顧客（顧問先）数は<br>何件ですか？</div>
+    <div class="slider-value" id="cli-display">60件</div>
+    <div class="slider-unit">顧客数（件）</div>
+    <div style="margin-top:16px;"><input type="range" id="cli-slider" min="1" max="300" step="1" value="60" oninput="updateCliDisplay(this.value)"></div>
+    <div class="slider-ticks"><span>1件</span><span>75件</span><span>150件</span><span>225件</span><span>300件+</span></div>
+    <div class="num-input-wrap" style="margin-top:20px;">
+      <label>または直接入力：</label>
+      <input type="number" class="num-input" id="cli-input" value="60" min="0" max="9999" oninput="syncCliSlider(this.value)">
+      <span style="font-size:13px;color:#718096;">件</span>
+    </div>
+    <button class="btn btn-primary" onclick="goTo('q4-screen')">次へ →</button>
+    <button class="btn btn-secondary" onclick="goTo('q2-screen')">← 戻る</button>
+  </div>
+</div>
+
+<!-- Q4 開業年数 -->
+<div class="screen" id="q4-screen">
+  <div class="card">
+    <div class="steps"><div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div></div>
+    <div class="q-label">質問 4 / 6</div>
+    <div class="q-title">開業（独立）から<br>何年経ちますか？</div>
+    <div class="slider-value" id="yr-display">10年</div>
+    <div class="slider-unit">開業年数</div>
+    <div style="margin-top:16px;"><input type="range" id="yr-slider" min="1" max="50" step="1" value="10" oninput="updateYrDisplay(this.value)"></div>
+    <div class="slider-ticks"><span>1年</span><span>12年</span><span>25年</span><span>37年</span><span>50年+</span></div>
+    <div class="num-input-wrap" style="margin-top:20px;">
+      <label>または直接入力：</label>
+      <input type="number" class="num-input" id="yr-input" value="10" min="1" max="99" oninput="syncYrSlider(this.value)">
+      <span style="font-size:13px;color:#718096;">年</span>
+    </div>
+    <button class="btn btn-primary" onclick="goTo('q5-screen')">次へ →</button>
+    <button class="btn btn-secondary" onclick="goTo('q3-screen')">← 戻る</button>
+  </div>
+</div>
+
+<!-- Q5 職員数 -->
+<div class="screen" id="q5-screen">
+  <div class="card">
+    <div class="steps"><div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot active"></div><div class="step-dot"></div></div>
+    <div class="q-label">質問 5 / 6</div>
+    <div class="q-title">事務所の職員数は<br>何人ですか？</div>
+    <div class="slider-value" id="staff-display">2人</div>
+    <div class="slider-unit">職員数（所長含まず）</div>
+    <div style="margin-top:16px;"><input type="range" id="staff-slider" min="0" max="20" step="1" value="2" oninput="updateStaffDisplay(this.value)"></div>
+    <div class="slider-ticks"><span>0人</span><span>5人</span><span>10人</span><span>15人</span><span>20人+</span></div>
+    <div class="num-input-wrap" style="margin-top:20px;">
+      <label>または直接入力：</label>
+      <input type="number" class="num-input" id="staff-input" value="2" min="0" max="99" oninput="syncStaffSlider(this.value)">
+      <span style="font-size:13px;color:#718096;">人</span>
+    </div>
+    <button class="btn btn-primary" onclick="goTo('q6-screen')">次へ →</button>
+    <button class="btn btn-secondary" onclick="goTo('q4-screen')">← 戻る</button>
+  </div>
+</div>
+
+<!-- Q6 顧客安定性 -->
+<div class="screen" id="q6-screen">
+  <div class="card">
+    <div class="steps"><div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot active"></div></div>
+    <div class="q-label">質問 6 / 6</div>
+    <div class="q-title">顧客の継続性・<br>安定性はどのくらいですか？</div>
+    <div class="stability-display">
+      <div class="sd-icon" id="sd-icon">⚖️</div>
+      <div class="sd-name" id="sd-name">どちらとも言えない</div>
+      <div class="sd-desc" id="sd-desc">長期顧問と単発・スポット対応が混在している</div>
+    </div>
+    <div style="margin-top:8px;"><input type="range" id="stab-slider" min="0" max="4" step="1" value="2" oninput="updateStabilityDisplay(this.value)"></div>
+    <div class="slider-ticks"><span>単発<br>中心</span><span>やや<br>単発</span><span>どちら<br>とも</span><span>やや<br>長期</span><span>長期<br>顧問</span></div>
+    <button class="btn btn-primary" onclick="showResults()">結果を見る 🎯</button>
+    <button class="btn btn-secondary" onclick="goTo('q5-screen')">← 戻る</button>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="screen" id="results-screen">
+  <div class="results-inner">
+    <div class="results-header">
+      <h2 id="res-header-title">診断結果</h2>
+      <p id="res-header-sub"></p>
+    </div>
+
+    <!-- Price Highlight -->
+    <div class="price-highlight">
+      <div class="ph-label">3方式平均 ― M&amp;A 売却推定額</div>
+      <div class="ph-price" id="ph-price">-</div>
+      <div class="ph-unit">万円（税引前・概算）</div>
+      <div class="ph-range" id="ph-range">レンジ：- 万円 〜 - 万円</div>
+    </div>
+
+    <!-- Verdict -->
+    <div class="verdict" id="verdict-box">
+      <div class="verdict-icon" id="verdict-icon">📊</div>
+      <div class="verdict-text">
+        <div class="v-tag" id="verdict-tag">-</div>
+        <div class="v-title" id="verdict-title">-</div>
+        <div class="v-body" id="verdict-body">-</div>
+      </div>
+    </div>
+
+    <!-- 3 Method breakdown -->
+    <div class="section-title">3つの算出方式による内訳</div>
+    <div class="method-grid">
+      <div class="method-card ev">
+        <div class="mc-tag">① EV/EBITDA方式</div>
+        <div class="mc-price" id="mc-ev">-</div>
+        <div class="mc-unit">万円</div>
+        <div class="mc-detail" id="mc-ev-detail">-</div>
+        <div class="mc-badge badge-purple" id="mc-ev-badge">-</div>
+      </div>
+      <div class="method-card per">
+        <div class="mc-tag">② PER方式</div>
+        <div class="mc-price" id="mc-per">-</div>
+        <div class="mc-unit">万円</div>
+        <div class="mc-detail" id="mc-per-detail">-</div>
+        <div class="mc-badge badge-green" id="mc-per-badge">-</div>
+      </div>
+      <div class="method-card rev">
+        <div class="mc-tag">③ 年商倍率方式</div>
+        <div class="mc-price" id="mc-rev">-</div>
+        <div class="mc-unit">万円</div>
+        <div class="mc-detail" id="mc-rev-detail">-</div>
+        <div class="mc-badge badge-blue" id="mc-rev-badge">-</div>
+      </div>
+    </div>
+
+    <!-- Succession comparison -->
+    <div class="section-title">承継方法ごとの試算比較</div>
+    <div class="succession-grid">
+      <div class="succ-card ma-card">
+        <div class="sc-icon">🏢</div>
+        <div class="sc-method">M&amp;A（第三者売却）</div>
+        <div class="sc-amount" id="sc-ma">-</div>
+        <div class="sc-note">売却収入の概算<br>仲介手数料（レーマン方式）別途</div>
+      </div>
+      <div class="succ-card gift-card">
+        <div class="sc-icon">👨‍👩‍👧</div>
+        <div class="sc-method">親族内承継（暦年贈与）</div>
+        <div class="sc-amount" id="sc-gift">-</div>
+        <div class="sc-note">贈与税概算<br>事業承継税制で納税猶予も可</div>
+      </div>
+      <div class="succ-card souzoku-card">
+        <div class="sc-icon">📋</div>
+        <div class="sc-method">相続時精算課税</div>
+        <div class="sc-amount" id="sc-souzoku">-</div>
+        <div class="sc-note">税負担概算<br>2,500万円まで非課税</div>
+      </div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="section-title">M&amp;A価格帯マップ ― あなたの位置</div>
+    <div class="heatmap-card">
+      <div class="legend-wrap">
+        <span class="legend-label">低価格帯</span>
+        <div class="legend-bar" id="legendBar"></div>
+        <span class="legend-label">高価格帯</span>
+        <span style="margin-left:12px;font-size:11px;color:#718096;">📍＝あなたの事務所</span>
+      </div>
+      <div class="heatmap-outer" id="heatmapOuter"></div>
+    </div>
+
+    <!-- Tips -->
+    <div class="section-title">事務所価値を高めるアドバイス</div>
+    <div class="tips" id="tips-box"></div>
+
+    <!-- Source -->
+    <div class="section-title">算出根拠・注意事項</div>
+    <div class="source-card">
+      <div style="font-weight:700;color:#2d3748;margin-bottom:10px;">📚 算出方法・参考資料</div>
+      <div class="source-item">① <strong>EV/EBITDA方式</strong>：EBITDA（営業利益＋減価償却費）×業種別倍率（第1四分位4倍〜第3四分位9倍、中央値6倍）で企業価値算出。M&A支援機関登録制度の算出方式に準拠。</div>
+      <div class="source-item">② <strong>PER方式</strong>：調整後純利益（営業利益×0.65）×PER倍率（8〜15倍）で株式価値を算出。</div>
+      <div class="source-item">③ <strong>年商倍率方式</strong>：年商×倍率（顧客安定性・開業年数・職員数を反映、0.4〜1.8倍）で算出。</div>
+      <div class="source-item">④ <strong>贈与税</strong>：税務上評価額（M&A価格の70%）に暦年課税速算表を適用した概算。</div>
+      <div class="source-item">⑤ <strong>参考：</strong><a href="https://ma-shienkikan.go.jp/stock-value-calculation" target="_blank" style="color:var(--blue);">M&A支援機関登録制度「株式価値の簡易計算」</a>・日本税理士会連合会「税理士実態調査」（2022年度）</div>
+      <div class="source-warn">⚠️ <strong>重要：</strong>本ツールの算出結果は<strong>概算・目安</strong>です。実際のM&A価格・税額は財務状況・顧客契約内容・地域・買い手の状況等により大きく異なります。承継・売却の意思決定は必ず<strong>税理士・M&Aアドバイザー・認定支援機関</strong>にご相談ください。</div>
+    </div>
+
+    <div class="restart-row">
+      <button class="btn btn-secondary btn-sm" onclick="restart()">← 最初からやり直す</button>
+    </div>
+  </div>
+</div>
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ──────────────────────────────────────────────────────────────────────────────
+// STABILITY
+// ──────────────────────────────────────────────────────────────────────────────
+const STABILITY=[
+  {icon:'📋',name:'単発・スポット中心',   desc:'確定申告代行など単発業務が中心。継続顧問契約は少ない',     stabAdj:-0.15},
+  {icon:'🔄',name:'やや単発寄り',         desc:'顧問契約もあるが単発・短期の顧客も相当数いる',             stabAdj:-0.07},
+  {icon:'⚖️',name:'どちらとも言えない',   desc:'長期顧問と単発・スポット対応が混在している',               stabAdj: 0.00},
+  {icon:'📈',name:'やや長期顧問寄り',     desc:'顧問契約中心だが、単発業務も一定割合ある',                stabAdj:+0.08},
+  {icon:'🤝',name:'長期顧問契約中心',     desc:'ほぼすべてが長期顧問契約。解約率が低く安定している',       stabAdj:+0.18},
+];
+
+// ──────────────────────────────────────────────────────────────────────────────
+// HEATMAP (Y=年商, X=営業利益率)
+// ──────────────────────────────────────────────────────────────────────────────
+const Y_LABELS=['3,000万以上','2,000〜3,000万','1,500〜2,000万','1,000〜1,500万','700〜1,000万','500〜700万','300〜500万','300万未満'];
+const Y_BOUNDS=[3000,2000,1500,1000,700,500,300,0];
+const Y_MIDS  =[4000,2500,1750,1250,850,600,400,150];
+const X_LABELS=['〜10%','11〜20%','21〜30%','31〜40%','41〜50%','50%超'];
+const X_BOUNDS=[0,10,20,30,40,50];
+const X_MIDS  =[5,15,25,35,45,55];
+
+// Cell price = EV/EBITDA at median 6x: EBITDA = rev * margin%
+// Plus depreciation ~3% of rev
+const CELL_PRICE = Y_MIDS.map(rev=>X_MIDS.map(margin=>{
+  const ebitda = rev*(margin/100) + rev*0.03;
+  return Math.round(ebitda*6);
+}));
+const ALL_PRICES=CELL_PRICE.flat();
+const MAX_PRICE=Math.max(...ALL_PRICES);
+const MIN_PRICE=Math.min(...ALL_PRICES);
+
+// ──────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ──────────────────────────────────────────────────────────────────────────────
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function fmt(n){return Math.round(n).toLocaleString('ja-JP');}
+
+function updateRevDisplay(v){
+  const n=parseInt(v);
+  document.getElementById('rev-display').textContent=(n>=6000?'6,000万円以上':fmt(n)+'万円');
+  document.getElementById('rev-input').value=n;
+  updateProfitCalc();
+}
+function syncRevSlider(v){
+  const n=Math.min(6000,Math.max(0,parseInt(v)||0));
+  document.getElementById('rev-slider').value=n;updateRevDisplay(n);
+}
+function updateMarginDisplay(v){
+  const n=parseInt(v);
+  document.getElementById('margin-display').textContent=n+'%';
+  updateProfitCalc();
+}
+function updateProfitCalc(){
+  const rev=parseInt(document.getElementById('rev-input').value)||800;
+  const margin=parseInt(document.getElementById('margin-slider').value)||25;
+  const profit=Math.round(rev*margin/100);
+  document.getElementById('profit-calc').textContent=fmt(profit)+'万円';
+}
+function updateCliDisplay(v){
+  const n=parseInt(v);
+  document.getElementById('cli-display').textContent=(n>=300?'300件以上':fmt(n)+'件');
+  document.getElementById('cli-input').value=n;
+}
+function syncCliSlider(v){
+  const n=Math.min(300,Math.max(0,parseInt(v)||0));
+  document.getElementById('cli-slider').value=n;updateCliDisplay(n);
+}
+function updateYrDisplay(v){
+  const n=parseInt(v);
+  document.getElementById('yr-display').textContent=(n>=50?'50年以上':n+'年');
+  document.getElementById('yr-input').value=n;
+}
+function syncYrSlider(v){
+  const n=Math.min(50,Math.max(1,parseInt(v)||1));
+  document.getElementById('yr-slider').value=n;updateYrDisplay(n);
+}
+function updateStaffDisplay(v){
+  const n=parseInt(v);
+  document.getElementById('staff-display').textContent=(n>=20?'20人以上':n+'人');
+  document.getElementById('staff-input').value=n;
+}
+function syncStaffSlider(v){
+  const n=Math.min(20,Math.max(0,parseInt(v)||0));
+  document.getElementById('staff-slider').value=n;updateStaffDisplay(n);
+}
+function updateStabilityDisplay(v){
+  const s=STABILITY[parseInt(v)];
+  document.getElementById('sd-icon').textContent=s.icon;
+  document.getElementById('sd-name').textContent=s.name;
+  document.getElementById('sd-desc').textContent=s.desc;
+}
+function getRevRow(rev){for(let i=0;i<Y_BOUNDS.length;i++)if(rev>=Y_BOUNDS[i])return i;return Y_BOUNDS.length-1;}
+function getMarginCol(margin){for(let i=X_BOUNDS.length-1;i>=0;i--)if(margin>X_BOUNDS[i])return i;return 0;}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// MAIN CALC
+// ──────────────────────────────────────────────────────────────────────────────
+function calcAll(rev,margin,cli,yr,staff,stabIdx){
+  const s=STABILITY[stabIdx];
+
+  // EBITDAの計算（営業利益 + 減価償却費推計3%）
+  const operatingProfit = rev*(margin/100);
+  const depreciation    = rev*0.03;
+  const ebitda          = operatingProfit + depreciation;
+
+  // ── 方式① EV/EBITDA ──
+  // 専門サービス業（士業）の取引事例倍率
+  // 安定性・年数・職員数でadjust
+  let evMult = 6.0; // 中央値
+  evMult += s.stabAdj*10; // stability影響
+  if(yr>=20) evMult+=0.8; else if(yr>=10) evMult+=0.4; else if(yr<5) evMult-=0.5;
+  if(staff>=5) evMult+=0.6; else if(staff>=3) evMult+=0.3; else if(staff===0) evMult-=0.5;
+  evMult=Math.min(10.0,Math.max(2.0,evMult));
+  const ev_low  = ebitda*4.0;  // 第1四分位
+  const ev_high = ebitda*9.0;  // 第3四分位
+  const ev_mid  = ebitda*evMult;
+
+  // ── 方式② PER ──
+  // 純利益 = 営業利益 × 0.65（法人税等考慮）
+  // ※個人事務所は所得税だが概算として同等に扱う
+  const netProfit = operatingProfit*0.65;
+  let perMult = 10.0;
+  perMult += s.stabAdj*8;
+  if(yr>=20) perMult+=1.5; else if(yr>=10) perMult+=0.8; else if(yr<5) perMult-=1.0;
+  if(staff>=5) perMult+=1.0; else if(staff>=3) perMult+=0.5; else if(staff===0) perMult-=1.0;
+  perMult=Math.min(18.0,Math.max(4.0,perMult));
+  const per_mid  = netProfit*perMult;
+  const per_low  = netProfit*8.0;
+  const per_high = netProfit*15.0;
+
+  // ── 方式③ 年商倍率 ──
+  let revMult = 0.80 + s.stabAdj;
+  if(yr>=20) revMult+=0.20; else if(yr>=10) revMult+=0.10; else if(yr<5) revMult-=0.10;
+  if(staff>=5) revMult+=0.15; else if(staff>=3) revMult+=0.10; else if(staff>=1) revMult+=0.05;
+  revMult=Math.min(1.80,Math.max(0.40,revMult));
+  const rev_mid  = rev*revMult;
+  const rev_low  = rev*0.40;
+  const rev_high = rev*1.80;
+
+  // ── 平均 ──
+  const avg = (ev_mid + per_mid + rev_mid)/3;
+  const low = Math.min(ev_low,per_low,rev_low);
+  const high= Math.max(ev_high,per_high,rev_high);
+
+  return {ebitda,operatingProfit,netProfit,
+    ev:{mid:ev_mid,low:ev_low,high:ev_high,mult:evMult},
+    per:{mid:per_mid,low:per_low,high:per_high,mult:perMult},
+    revM:{mid:rev_mid,low:rev_low,high:rev_high,mult:revMult},
+    avg,low,high};
+}
+
+function calcGiftTax(maPrice){
+  const assessed=maPrice*0.70;
+  const taxable=Math.max(0,assessed-110);
+  let tax=0;
+  if(taxable<=0)    tax=0;
+  else if(taxable<=200)  tax=taxable*0.10;
+  else if(taxable<=300)  tax=taxable*0.15-10;
+  else if(taxable<=400)  tax=taxable*0.20-25;
+  else if(taxable<=600)  tax=taxable*0.30-65;
+  else if(taxable<=1000) tax=taxable*0.40-125;
+  else if(taxable<=1500) tax=taxable*0.45-175;
+  else if(taxable<=3000) tax=taxable*0.50-250;
+  else                   tax=taxable*0.55-400;
+  return Math.max(0,tax);
+}
+function calcSouzoku(maPrice){
+  const assessed=maPrice*0.70;
+  const taxable=Math.max(0,assessed-2500);
+  return taxable*0.20;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// VERDICT
+// ──────────────────────────────────────────────────────────────────────────────
+function getVerdict(avg){
+  if(avg>=3000) return{type:'top',icon:'🏆',tag:'PREMIUM M&A TARGET',title:'プレミアム価格帯の優良M&A対象',body:`3方式平均の推定売却額${fmt(avg)}万円は業界上位クラスです。複数のM&A仲介会社へ打診し、競争入札で価格を引き上げましょう。大手税理士法人・コンサルグループが主な買い手候補です。`};
+  if(avg>=1500) return{type:'high',icon:'💰',tag:'HIGH VALUE M&A',title:'有力なM&A候補事務所',body:`推定売却額${fmt(avg)}万円は、M&A仲介が積極的に取り扱う価格帯です。会計事務所グループ・税理士法人・コンサル会社が買い手候補として挙がります。承継後の顧客引継ぎ体制の整備が価格上乗せの鍵です。`};
+  if(avg>=500)  return{type:'mid',icon:'📊',tag:'STANDARD M&A RANGE',title:'標準的なM&A承継案件',body:`推定売却額${fmt(avg)}万円は地域税理士事務所M&Aの標準価格帯です。地元の同業者・若手税理士・税理士法人への承継が現実的です。収益性の改善と顧客安定化で売却前に価値を高められます。`};
+  if(avg>=200)  return{type:'low',icon:'🌱',tag:'SMALL SCALE SUCCESSION',title:'小規模承継・親族内も選択肢',body:`推定売却額${fmt(avg)}万円の規模では、親族内承継や知人税理士への譲渡も現実的です。M&Aと贈与税コストを比較したうえで判断しましょう。顧問料単価の改善と顧客の長期化が価値向上の近道です。`};
+  return{type:'family',icon:'👨‍👩‍👧',tag:'FAMILY SUCCESSION RECOMMENDED',title:'親族内承継・後継者育成が現実的',body:'現在の規模・収益性ではM&A市場での高値売却は難しい状況です。まず利益率の改善と長期顧問契約の拡充を進め、3〜5年後の承継に備えましょう。事業承継税制の特例（贈与税・相続税の納税猶予）の活用も検討ください。'};
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// COLOR
+// ──────────────────────────────────────────────────────────────────────────────
+const STOPS=[{p:0,r:235,g:245,b:255},{p:.2,r:147,g:210,b:250},{p:.4,r:56,g:178,b:172},{p:.6,r:250,g:220,b:80},{p:.8,r:237,g:137,b:54},{p:1,r:197,g:48,b:48}];
+function lerp(a,b,t){return a+(b-a)*t;}
+function getColor(price){
+  const pct=(MAX_PRICE===MIN_PRICE)?0:(price-MIN_PRICE)/(MAX_PRICE-MIN_PRICE);
+  for(let i=1;i<STOPS.length;i++){
+    if(pct<=STOPS[i].p){
+      const pr=STOPS[i-1],cu=STOPS[i],t=(pct-pr.p)/(cu.p-pr.p);
+      return{bg:`rgb(${Math.round(lerp(pr.r,cu.r,t))},${Math.round(lerp(pr.g,cu.g,t))},${Math.round(lerp(pr.b,cu.b,t))})`,
+             r:Math.round(lerp(pr.r,cu.r,t)),g:Math.round(lerp(pr.g,cu.g,t)),b:Math.round(lerp(pr.b,cu.b,t))};
+    }
+  }
+  const l=STOPS[STOPS.length-1];return{bg:`rgb(${l.r},${l.g},${l.b})`,r:l.r,g:l.g,b:l.b};
+}
+function textColor(r,g,b){return(0.299*r+0.587*g+0.114*b)>160?'#1a202c':'#fff';}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// HEATMAP
+// ──────────────────────────────────────────────────────────────────────────────
+function buildHeatmap(userRi,userCi){
+  const W=82,H=50;
+  const outer=document.getElementById('heatmapOuter');outer.innerHTML='';
+  const lb=document.getElementById('legendBar');lb.innerHTML='';
+  for(let i=0;i<20;i++){const p=MIN_PRICE+(MAX_PRICE-MIN_PRICE)*(i/19);const c=getColor(p);const d=document.createElement('div');d.style.background=c.bg;lb.appendChild(d);}
+  const yTicks=document.createElement('div');yTicks.className='y-ticks';
+  Y_LABELS.forEach(l=>{const d=document.createElement('div');d.className='y-tick';d.style.height=H+'px';d.textContent=l;yTicks.appendChild(d);});
+  const yLbl=document.createElement('div');yLbl.className='y-axis-label';yLbl.textContent='年　商（万円）';
+  const tableArea=document.createElement('div');tableArea.className='table-area';
+  const grid=document.createElement('div');grid.className='heatmap-grid';
+  grid.style.gridTemplateColumns=`repeat(6,${W}px)`;
+  grid.style.gridTemplateRows=`repeat(8,${H}px)`;
+  CELL_PRICE.forEach((row,ri)=>{
+    row.forEach((price,ci)=>{
+      const c=getColor(price);const tc=textColor(c.r,c.g,c.b);
+      const cell=document.createElement('div');
+      cell.className='hm-cell'+(ri===userRi&&ci===userCi?' user-cell':'');
+      cell.style.cssText=`background:${c.bg};color:${tc};width:${W}px;height:${H}px;`;
+      cell.innerHTML=`${ri===userRi&&ci===userCi?'<div class="user-marker">📍</div>':''}<span class="cell-val">約${fmt(price)}万円</span>`;
+      cell.addEventListener('mousemove',e=>{
+        const t=document.getElementById('tooltip');t.style.display='block';
+        t.innerHTML=`<strong>推定M&A価格 約${fmt(price)}万円</strong>${Y_LABELS[ri]}<br>利益率 ${X_LABELS[ci]}`;
+        t.style.left=(e.clientX+12)+'px';t.style.top=(e.clientY-10)+'px';
+      });
+      cell.addEventListener('mouseleave',()=>{document.getElementById('tooltip').style.display='none';});
+      grid.appendChild(cell);
+    });
+  });
+  const xTicks=document.createElement('div');xTicks.className='x-ticks';
+  xTicks.style.gridTemplateColumns=`repeat(6,${W}px)`;
+  X_LABELS.forEach(l=>{const d=document.createElement('div');d.className='x-tick';d.textContent=l;xTicks.appendChild(d);});
+  const xLbl=document.createElement('div');xLbl.className='x-axis-label';xLbl.textContent='営　業　利　益　率';
+  tableArea.appendChild(grid);tableArea.appendChild(xTicks);tableArea.appendChild(xLbl);
+  outer.appendChild(yLbl);outer.appendChild(yTicks);outer.appendChild(tableArea);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// TIPS
+// ──────────────────────────────────────────────────────────────────────────────
+function buildTips(avg,stabIdx,yr,staff,margin,rev,cli){
+  const tips=[];
+  if(margin<20){
+    tips.push({cls:'orange',head:'💡 利益率の改善が最優先',body:`現在の営業利益率（${margin}%）は税理士事務所の平均（20〜35%）を下回っています。固定費の見直し・記帳業務のクラウド化・低単価顧客の整理で利益率を高めることがM&A価格の直接的な引き上げになります。`});
+  } else if(margin>=35){
+    tips.push({cls:'green',head:'✅ 高い利益率が評価される',body:`営業利益率${margin}%は業界平均を大きく上回る高収益体質です。EV/EBITDA方式・PER方式ともに高い評価につながります。この水準を維持しながら売却時期を検討しましょう。`});
+  } else {
+    tips.push({cls:'',head:'📊 利益率の維持・向上を',body:'現在の利益率は標準的な水準です。クラウド会計導入や業務効率化で5〜10%の改善ができれば、M&A売却額が数百万円単位で上昇する可能性があります。'});
+  }
+  if(stabIdx<=1){
+    tips.push({cls:'orange',head:'🔑 顧問契約比率の改善',body:'単発業務を長期顧問契約に転換するだけでEV/EBITDA倍率が上昇します。顧問化率10%改善でM&A価格が大きく変わることもあります。買い手は「安定した経常収益」を最も重視します。'});
+  } else if(stabIdx>=3){
+    tips.push({cls:'green',head:'✅ 安定収益が最大の強み',body:'長期顧問契約中心の事務所はM&A買い手から最高の評価を受けます。解約率・平均顧問年数を数値化して売却交渉の資料にしましょう。'});
+  } else {
+    tips.push({cls:'',head:'📋 契約書の整備を',body:'顧問契約書が整備されているかどうかはM&Aの価格交渉に影響します。口頭契約を書面化し、長期継続を明示した契約に切り替えることを検討しましょう。'});
+  }
+  if(staff===0){
+    tips.push({cls:'orange',head:'⚠️ 所長依存リスク',body:'一人事務所は急病・廃業リスクが高く、買い手がつきにくい最大の要因です。パート・補助者を1名採用するだけで評価が大きく改善します。職員がいることで「引継ぎ可能な事務所」になります。'});
+  } else if(staff>=3){
+    tips.push({cls:'green',head:'🏢 組織化が価値を高める',body:'複数職員がいる事務所は買い手が引き継ぎやすく、M&A価格が上昇します。業務マニュアルの整備・クラウド化・権限委譲を進め「所長がいなくても回る事務所」を目指しましょう。'});
+  } else {
+    tips.push({cls:'',head:'📋 引継ぎ体制の整備',body:'承継を見据えてクラウド会計・電子申告の整備と顧客情報のデータベース化を進めましょう。引継ぎの容易さはM&A価格に直結します。'});
+  }
+  if(yr<10){
+    tips.push({cls:'',head:'📅 価値向上後の売却を検討',body:'開業10年未満は顧客との信頼関係・利益率ともに発展途上です。5〜10年後を目標に利益率・顧客安定性を高めてから売却するほうが大幅に有利になります。'});
+  } else if(yr>=30){
+    tips.push({cls:'orange',head:'⏰ 早めの承継計画を',body:'開業30年以上の場合、後継者探しには2〜5年かかることがあります。M&A仲介会社・認定支援機関への相談を今すぐ始めることが顧客を守ることにもつながります。'});
+  } else {
+    tips.push({cls:'green',head:'🎯 事業承継税制の活用',body:'後継者が要件を満たす場合、贈与税・相続税の100%納税猶予が受けられる「事業承継税制の特例」を検討しましょう。認定支援機関（商工会議所・金融機関等）への相談から始められます。'});
+  }
+  const box=document.getElementById('tips-box');
+  box.innerHTML=tips.slice(0,4).map(t=>`<div class="tip ${t.cls}"><div class="t-head">${t.head}</div><div class="t-body">${t.body}</div></div>`).join('');
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// SHOW RESULTS
+// ──────────────────────────────────────────────────────────────────────────────
+function showResults(){
+  const rev   = parseInt(document.getElementById('rev-input').value)||0;
+  const margin= parseInt(document.getElementById('margin-slider').value)||0;
+  const cli   = parseInt(document.getElementById('cli-input').value)||0;
+  const yr    = parseInt(document.getElementById('yr-input').value)||0;
+  const staff = parseInt(document.getElementById('staff-input').value)||0;
+  const stabIdx=parseInt(document.getElementById('stab-slider').value);
+  if(rev<=0||cli<=0||yr<=0){alert('すべての項目を入力してください');return;}
+
+  const c=calcAll(rev,margin,cli,yr,staff,stabIdx);
+  const giftTax=calcGiftTax(c.avg);
+  const souzoku=calcSouzoku(c.avg);
+  const ri=getRevRow(rev);
+  const ci=getMarginCol(margin);
+  const v=getVerdict(c.avg);
+
+  // Header
+  document.getElementById('res-header-title').textContent='診断結果：'+Y_LABELS[ri]+' × '+X_LABELS[ci];
+  document.getElementById('res-header-sub').textContent='年商 '+fmt(rev)+'万円 ／ 利益率 '+margin+'% ／ 顧客数 '+fmt(cli)+'件 ／ 開業 '+yr+'年';
+
+  // Price highlight
+  document.getElementById('ph-price').textContent=fmt(c.avg);
+  document.getElementById('ph-range').textContent='レンジ：'+fmt(c.low)+'万円 〜 '+fmt(c.high)+'万円';
+
+  // Verdict
+  const vbox=document.getElementById('verdict-box');
+  vbox.className='verdict '+v.type;
+  document.getElementById('verdict-icon').textContent=v.icon;
+  document.getElementById('verdict-tag').textContent=v.tag;
+  document.getElementById('verdict-title').textContent=v.title;
+  document.getElementById('verdict-body').textContent=v.body;
+
+  // Method cards
+  document.getElementById('mc-ev').textContent=fmt(c.ev.mid);
+  document.getElementById('mc-ev-detail').textContent='EBITDA '+fmt(c.ebitda)+'万円 × '+c.ev.mult.toFixed(1)+'倍\n(レンジ: '+fmt(c.ev.low)+'〜'+fmt(c.ev.high)+'万円)';
+  document.getElementById('mc-ev-badge').textContent='倍率 '+c.ev.mult.toFixed(1)+'x';
+
+  document.getElementById('mc-per').textContent=fmt(c.per.mid);
+  document.getElementById('mc-per-detail').textContent='純利益 '+fmt(c.netProfit)+'万円 × PER '+c.per.mult.toFixed(1)+'倍\n(レンジ: '+fmt(c.per.low)+'〜'+fmt(c.per.high)+'万円)';
+  document.getElementById('mc-per-badge').textContent='PER '+c.per.mult.toFixed(1)+'倍';
+
+  document.getElementById('mc-rev').textContent=fmt(c.revM.mid);
+  document.getElementById('mc-rev-detail').textContent='年商 '+fmt(rev)+'万円 × '+c.revM.mult.toFixed(2)+'倍\n(レンジ: '+fmt(c.revM.low)+'〜'+fmt(c.revM.high)+'万円)';
+  document.getElementById('mc-rev-badge').textContent='倍率 '+c.revM.mult.toFixed(2)+'倍';
+
+  // Succession
+  document.getElementById('sc-ma').textContent=fmt(c.avg)+'万円';
+  document.getElementById('sc-gift').textContent=giftTax<1?'ほぼ0円':fmt(giftTax)+'万円';
+  document.getElementById('sc-souzoku').textContent=souzoku<1?'0円（控除内）':fmt(souzoku)+'万円';
+
+  // Heatmap
+  buildHeatmap(ri,ci);
+
+  // Tips
+  buildTips(c.avg,stabIdx,yr,staff,margin,rev,cli);
+
+  goTo('results-screen');
+}
+
+function restart(){
+  document.getElementById('rev-slider').value=800;updateRevDisplay(800);
+  document.getElementById('margin-slider').value=25;updateMarginDisplay(25);
+  document.getElementById('cli-slider').value=60;updateCliDisplay(60);
+  document.getElementById('yr-slider').value=10;updateYrDisplay(10);
+  document.getElementById('staff-slider').value=2;updateStaffDisplay(2);
+  document.getElementById('stab-slider').value=2;updateStabilityDisplay(2);
+  goTo('welcome-screen');
+}
+
+// Init
+updateStabilityDisplay(2);
+updateProfitCalc();
+</script>
+</body>
+</html>
