@@ -91,6 +91,7 @@ td.hl,th.hl{background:#fffbea;}
     <div class="panel" id="p-now"></div>
     <div class="panel" id="p-cash"></div>
     <div class="panel" id="p-scn"></div>
+    <div class="panel" id="p-corp"></div>
     <div class="panel" id="p-adv"></div>
     <div class="panel"><h2>前提・注意事項</h2><div class="note" id="notes"></div>
       <div style="margin-top:10px" class="noprint"><button class="btn g" onclick="window.print()">印刷／PDF保存</button> <button class="btn g" onclick="resetAll()">入力をリセット</button></div></div>
@@ -134,6 +135,13 @@ const GROUPS=[
   {id:'ctMethod',l:'納税方式',sel:[['exempt','免税事業者（納税なし）'],['nikari','2割特例（令和8年分まで）'],['simple','簡易課税'],['general','原則課税']],d:'exempt',h:'課税事業者の場合、売上は税抜で入力'},
   {id:'simpleType',l:'簡易課税の事業区分（みなし仕入率）',sel:[[0.9,'第1種 卸売 90%'],[0.8,'第2種 小売 80%'],[0.7,'第3種 製造等 70%'],[0.6,'第4種 その他 60%'],[0.5,'第5種 サービス業等 50%'],[0.4,'第6種 不動産 40%']],d:0.5},
   {id:'taxRatio',l:'経費のうち課税仕入の割合（原則課税）',u:'%',d:70,m:0,step:1}]},
+ {t:'⑦ 法人成り比較（添付Excelの方式）',f:[
+  {id:'pay',l:'法人化した場合の役員報酬（年額）',u:'万円',d:480,m:1,h:'下の最適額（有利額が最大になる報酬）も自動表示します'},
+  {id:'payMin',l:'役員報酬の下限（生活費など）',u:'万円',d:300,m:1,h:'最適報酬の探索はこの額以上で行います。0にすると法人に利益を貯める前提になり非現実的な結果になりやすい'},
+  {id:'hr',l:'健康保険料率（本人負担分）',u:'%',d:5.5,m:0,step:0.01,h:'協会けんぽの都道府県別料率の折半後。5〜6%で仮置き'},
+  {id:'pr',l:'厚生年金保険料率（本人負担分）',u:'%',d:9,m:0,step:0.01,h:'標準9%（18.3%の折半）'},
+  {id:'emp',l:'社会保険加入の従業員給与（年額）',u:'万円',d:0,m:1,h:'会社負担の社保算定に加算（経費には既に含まれている前提）'},
+  {id:'btInExp',l:'経費に含まれる個人事業税（任意）',u:'万円',d:'',m:1,h:'税込経理で租税公課に計上済みの額。空欄なら今年の試算額と同額とみなす'}]},
  {t:'⑥ 資金繰り（任意）',f:[
   {id:'prevTax',l:'前年分の所得税の申告納税額（予定納税基準額）',u:'万円',d:0,m:1,h:'確定申告書「申告納税額」。15万円以上で予定納税あり'},
   {id:'prevBT',l:'今年納付する個人事業税（前年分・年額）',u:'万円',d:0,m:1,h:'納税通知書の年税額（8月・11月に半額ずつ）'}]}
@@ -159,7 +167,7 @@ function setDefaults(){for(const f of ALL){const e=document.getElementById(f.id)
 function loadSaved(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(!s)return;for(const f of ALL){if(!(f.id in s))continue;const e=document.getElementById(f.id);if(f.chk)e.checked=!!s[f.id];else e.value=s[f.id];}}catch(e){}}
 function save(){try{const s={};for(const f of ALL){const e=document.getElementById(f.id);s[f.id]=f.chk?e.checked:e.value;}localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}}
 function resetAll(){try{localStorage.removeItem(KEY)}catch(e){};setDefaults();update();}
-const OPT=['annSales','annExp','kokuhoAct'];
+const OPT=['annSales','annExp','kokuhoAct','btInExp'];
 function readP(){
   const P={};
   for(const f of ALL){
@@ -197,6 +205,7 @@ function calc(P,S,E){
   R.kEst=kEst(Math.max(0,sum0));
   R.kokuho=R.kEst;                              // 基準調整は呼び出し側で
   if(P._kBaseDelta!=null) R.kokuho=Math.max(0,P._kBaseDelta+R.kEst);
+  if(P._kFixed!=null) R.kokuho=P._kFixed;
   const shaho=R.kokuho+P.nenkin+P.shokibo+P.ideco;
   const n1=P.dep1/1, n2=P.dep2, n3=P.dep3;     // (人数は m:0 のため素の数)
   /* 所得税 */
@@ -255,6 +264,48 @@ function calc(P,S,E){
   R.net=S-E-P.senju+P.other-R.burden;
   return R;
 }
+
+/* ============ 法人成り比較（添付Excel「個人事業 vs 法人」の方式） ============ */
+function kyuyoDed(x){ // 給与所得控除（令和8年分：最低69万円）
+  if(x<=0)return 0;
+  const v=x<=3600000?x*.3+80000:x<=6600000?x*.2+440000:x<=8500000?x*.1+1100000:1950000;
+  return Math.min(x,Math.max(690000,v));
+}
+function corpRate(g){ // 法人税・地方法人税・事業税・住民税割を合算した実効税率（Excel「法人税率」シート）
+  const F=g<=4e6?.15:g<=8e6?.15:.232, H=g<=4e6?.035:g<=8e6?.053:.07;
+  const G=F*.103,I=H*.37,J=F*.07;
+  return (F*(1+G/F+J/F)+H*(1+I/H))/(1+H*(1+I/H));
+}
+function corp(P,S,E,pay,B){
+  const P0={...P,other:0,ctMethod:'exempt'};
+  const ind=calcAt(P0,S,E,B);
+  const indFinal=ind.raw-ind.incomeTax-ind.resident-ind.kokuho-ind.nenkin;
+  const btAdj=P.btInExp!=null?P.btInExp:ind.bizTax;
+  const hr=(P.hr||0)/100,pr=(P.pr||0)/100,emp=P.emp||0;
+  const hP=Math.min(pay*hr,840000),pP=Math.min(pay*pr,720000);
+  const hC=Math.min((pay+emp)*hr,840000),pC=Math.min((pay+emp)*pr,720000);
+  const kd=kyuyoDed(pay),Giv=Math.max(0,pay-kd);
+  const Q={...P,other:Giv,blue:0,senju:0,carry:0,btType:0,ctMethod:'exempt',_kFixed:hP,nenkin:pP,kokuhoAct:null,_kBaseDelta:null};
+  const o=calc(Q,0,0);
+  const ivFinal=pay-hP-pP-o.incomeTax-o.resident;
+  const expense=E+P.senju+pay-btAdj;
+  const profit=S-expense;
+  const Gc=profit-hC-pC;
+  const cTax=(Gc>0?Gc*corpRate(Gc):0)+70000;
+  const cFinal=Gc-cTax;
+  const total=ivFinal+cFinal;
+  return {ind,indFinal,btAdj,pay,hP,pP,hC,pC,kd,Giv,o,ivFinal,expense,profit,Gc,cTax,cFinal,total,diff:total-indFinal,
+    taxInd:ind.incomeTax+ind.resident+ind.bizTax,taxCorp:o.incomeTax+o.resident+cTax,
+    socInd:ind.kokuho+ind.nenkin,socCorp:hP+pP+hC+pC};
+}
+function optPay(P,S,E,B,step){
+  const top=Math.max(0,S-E-P.senju)+ (P.emp||0);
+  const lo=Math.min(P.payMin||0,top);
+  let best=null;
+  for(let pay=lo;pay<=top;pay+=step){const c=corp(P,S,E,pay,B);if(!best||c.diff>best.diff)best=c;}
+  return best||corp(P,S,E,0,B);
+}
+
 /* 現状値の確定（年換算など） */
 function baseline(P){
   const m=Math.min(12,Math.max(1,P.months||1));
@@ -273,6 +324,7 @@ function calcAt(P,S,E,B){
 const yen=n=>Math.round(n).toLocaleString('ja-JP')+'円';
 const man=(n,d=1)=>{const v=n/10000;return v.toLocaleString('ja-JP',{maximumFractionDigits:d})+'万円';};
 const pct=(x,d=1)=>(x*100).toFixed(d)+'%';
+const sgnYen=n=>(n>=0?'+':'−')+Math.abs(Math.round(n)).toLocaleString('ja-JP')+'円';
 const sgn=n=>(n>=0?'+':'')+man(n);
 const $=id=>document.getElementById(id);
 
@@ -291,6 +343,7 @@ function update(){
   renderNow(P,b,cur);
   renderCash(P,cur);
   renderScenario(P,b,B,cur);
+  renderCorp(P,b,B);
   renderNotes();
 }
 
@@ -351,32 +404,33 @@ function renderCash(P,r){
 }
 
 /* ---- 増収シナリオ ---- */
-let target=null;
+let target=null,userMoved=false;
 function renderScenario(P,b,B,cur){
   const baseRatio=b.S>0?b.E/b.S:0;
   const maxS=Math.max(b.S*4,30000000);
-  if(target==null){target=Math.round(Math.max(b.S*1.5,b.S+5000000)/100000)*100000;}
+  if(target==null||!userMoved){target=Math.round(Math.max(b.S*1.5,b.S+5000000)/100000)*100000;}
   const rv=$('varRatio')?$('varRatio').value:'';
   const vr=rv===''?baseRatio:Math.min(1,Math.max(0,+rv/100));
   ST.vr=vr;
   const E_at=S=>Math.max(0,b.E+(S-b.S)*vr);
   const calcS=S=>calcAt(P,S,E_at(S),B);
   const cols=[['現状見込',b.S],['×1.5',b.S*1.5],['×2',b.S*2],['×3',b.S*3],['目標売上',target]];
-  const res=cols.map(c=>({n:c[0],S:c[1],r:calcS(c[1])}));
+  const res=cols.map(c=>({n:c[0],S:c[1],r:calcS(c[1]),o:optPay(P,c[1],E_at(c[1]),B,200000)}));
   const rows=[
    ['年間売上',r=>man(r.S,0)],['事業所得（青色控除前）',r=>man(r.raw,0)],
    ['所得税・復興税',r=>yen(r.incomeTax)],['住民税',r=>yen(r.resident)],['個人事業税',r=>yen(r.bizTax)],
    ['消費税',r=>yen(r.consumption)],['国保＋年金',r=>yen(r.soc)],
    ['税＋社保 合計',r=>yen(r.burden),'tot'],['手取り',r=>yen(r.net),'tot'],
    ['事業所得に対する負担率',r=>r.raw>0?pct(r.burden/r.raw):'-','sub'],
-   ['所得税の税率帯',r=>pct(r.margI,0),'sub']];
+   ['所得税の税率帯',r=>pct(r.margI,0),'sub'],
+   ['法人成りの有利額（最適報酬時）',null,'tot','o'],['　最適な役員報酬',null,'sub','p']];
   const hasInput=!!$('tgt');
   if(!hasInput){
     $('p-scn').innerHTML=`<h2>売上が増えた場合の税負担</h2>
     <div class="f"><label>目標とする年間売上</label><div class="sv" id="tgtv"></div><input type="range" class="slider" id="tgt" min="0" max="${maxS}" step="100000"><div class="legend" style="justify-content:space-between"><span>0</span><span id="tgtmax"></span></div></div>
     <div class="f"><label>増収分にかかる経費率（％）</label><div class="row"><input type="number" id="varRatio" step="1" min="0" max="100"><span class="u">%</span></div><div class="hint">売上が増えたとき、増加分の何割が経費になるか。初期値は現在の経費率。固定費は増えない前提。</div></div>
     <div id="scnBody"></div>`;
-    $('tgt').addEventListener('input',e=>{target=+e.target.value;update();});
+    $('tgt').addEventListener('input',e=>{target=+e.target.value;userMoved=true;update();});
     $('varRatio').addEventListener('input',update);
     $('varRatio').value=Math.round(baseRatio*100);
     update();return;
@@ -401,7 +455,7 @@ function renderScenario(P,b,B,cur){
    <div class="chart" id="chart"></div>
    <div class="scroll" style="margin-top:10px"><table>
     <tr><th></th>${res.map((c,i)=>`<th class="${i==4?'hl':''}">${c.n}</th>`).join('')}</tr>
-    ${rows.map(rw=>`<tr class="${rw[2]||''}"><td>${rw[0]}</td>${res.map((c,i)=>`<td class="${i==4?'hl':''}">${rw[1](c.r)}</td>`).join('')}</tr>`).join('')}
+    ${rows.map(rw=>`<tr class="${rw[2]||''}"><td>${rw[0]}</td>${res.map((c,i)=>`<td class="${i==4?'hl':''}">${rw[3]=='o'?sgnYen(c.o.diff):rw[3]=='p'?man(c.o.pay,0):rw[1](c.r)}</td>`).join('')}</tr>`).join('')}
    </table></div>`;
   drawChart(b,target,cur,res[4].r);
   renderAdvice(P,b,B,cur,res[4].r,calcS,vr);
@@ -436,6 +490,66 @@ function drawChart(b,target,cur,tr){
     tip.style.left=Math.min(rc.width-130,Math.max(0,(x(best.S)/W)*rc.width+10))+'px';tip.style.top='10px';
   });
   s.addEventListener('mouseleave',()=>{$('tip').style.display='none';s.querySelector('#hv').setAttribute('opacity','0');});
+}
+
+
+function renderCorp(P,b,B){
+  const c=corp(P,b.S,b.E,P.pay||0,B);
+  const o=optPay(P,b.S,b.E,B,100000);
+  // 役員報酬別の有利額（グラフ用）
+  const pts=[];const top=Math.max(0,b.S-b.E-P.senju)+(P.emp||0);
+  const stp=Math.max(100000,Math.ceil(top/40/100000)*100000);
+  for(let pay=0;pay<=top;pay+=stp){pts.push({pay,diff:corp(P,b.S,b.E,pay,B).diff});}
+  const W=720,H=240,L=62,R=14,T=14,Bm=34;
+  const ys=pts.map(p=>p.diff),mx=Math.max(...ys,1),mn=Math.min(...ys,-1);
+  const x=v=>L+(v/(pts[pts.length-1].pay||1))*(W-L-R),y=v=>T+(1-(v-mn)/(mx-mn))*(H-T-Bm);
+  let g='';for(let i=0;i<=4;i++){const v=mn+(mx-mn)*i/4;g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#e2e8f0"/><text x="${L-6}" y="${y(v)+4}" font-size="11" fill="#718096" text-anchor="end">${Math.round(v/10000).toLocaleString()}</text>`;}
+  for(let i=0;i<=4;i++){const v=(pts[pts.length-1].pay||0)*i/4;g+=`<text x="${x(v)}" y="${H-12}" font-size="11" fill="#718096" text-anchor="middle">${Math.round(v/10000).toLocaleString()}</text>`;}
+  const path=pts.map((p,i)=>(i?'L':'M')+x(p.pay).toFixed(1)+','+y(p.diff).toFixed(1)).join('');
+  const zero=mn<0&&mx>0?`<line x1="${L}" x2="${W-R}" y1="${y(0)}" y2="${y(0)}" stroke="#2d3748" stroke-dasharray="3 3"/>`:'';
+  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="役員報酬別の法人成り有利額">${g}${zero}<path d="${path}" fill="none" stroke="#276749" stroke-width="2.5"/>
+   <circle cx="${x(o.pay)}" cy="${y(o.diff)}" r="5" fill="#c05621"/><text x="${Math.min(W-R-110,x(o.pay)+8)}" y="${y(o.diff)-8}" font-size="11" fill="#c05621" font-weight="700">最適 ${Math.round(o.pay/10000)}万円</text>
+   <text x="${W/2}" y="${H-1}" font-size="11" fill="#718096" text-anchor="middle">役員報酬（万円／年）　縦軸：法人成りの有利額（万円）</text></svg>`;
+  const n=v=>yen(v);
+  const good=c.diff>=0;
+  const row=(l,a,bb,cc,dd,cls)=>`<tr class="${cls||''}"><td>${l}</td><td>${a??''}</td><td>${bb??''}</td><td>${cc??''}</td><td>${dd??''}</td></tr>`;
+  $('p-corp').innerHTML=`<h2>法人成りした場合の比較（個人事業 vs 法人）</h2>
+  <div class="note" style="margin-bottom:10px">添付Excel（個人事業と法人の最終手取り比較）の計算方式に合わせて試算しています。個人側は上の「今年の見込み」の売上・経費・控除をそのまま使い、法人側は役員報酬・社保料率（⑦）で計算します。</div>
+  <div class="kpis">
+   <div class="kpi ${good?'main':''}"><div class="l">法人成りの有利額（入力した報酬）</div><div class="v">${sgnYen(c.diff)}</div><div class="s">${good?'法人が有利':'個人事業が有利'}（報酬${man(c.pay,0)}）</div></div>
+   <div class="kpi"><div class="l">個人事業の最終手取り</div><div class="v">${man(c.indFinal,0)}</div></div>
+   <div class="kpi"><div class="l">法人化後の最終手取り</div><div class="v">${man(c.total,0)}</div><div class="s">役員 ${man(c.ivFinal,0)}＋法人留保 ${man(c.cFinal,0)}</div></div>
+   <div class="kpi"><div class="l">有利額が最大になる報酬</div><div class="v">${man(o.pay,0)}</div><div class="s">その時の有利額 ${sgnYen(o.diff)}</div></div>
+  </div>
+  <div class="scroll"><table>
+   <tr><th></th><th>個人事業</th><th>法人化：役員個人</th><th>法人化：法人</th><th>法人化：合計</th></tr>
+   ${row('収入',n(b.S),n(c.pay),n(b.S),n(b.S+c.pay))}
+   ${row('給与所得控除',null,n(c.kd),null,n(c.kd),'sub')}
+   ${row('経費等（青色控除前）',n(b.E+P.senju),null,n(c.expense),n(c.expense),'sub')}
+   ${row('所得（所得控除前）',n(c.ind.raw),n(c.Giv),n(c.profit),n(c.Giv+c.profit))}
+   ${row('健康保険料',n(c.ind.kokuho)+'<small>（国保）</small>',n(c.hP),n(c.hC),n(c.hP+c.hC),'sub')}
+   ${row('年金保険料',n(c.ind.nenkin),n(c.pP),n(c.pC),n(c.pP+c.pC),'sub')}
+   ${row('所得控除合計（社保除く）',n(c.ind.dedI-c.ind.kokuho-c.ind.nenkin-P.shokibo-P.ideco),n(c.o.dedI-c.hP-c.pP-P.shokibo-P.ideco),null,null,'sub')}
+   ${row('課税所得',n(c.ind.TI),n(c.o.TI),n(Math.max(0,c.Gc)),n(c.o.TI+Math.max(0,c.Gc)))}
+   ${row('所得税・復興税',n(c.ind.incomeTax),n(c.o.incomeTax),null,n(c.o.incomeTax))}
+   ${row('住民税',n(c.ind.resident),n(c.o.resident),null,n(c.o.resident))}
+   ${row('法人税等（実効税率'+pct(corpRate(Math.max(0,c.Gc)),1)+'＋均等割7万円）',null,null,n(c.cTax),n(c.cTax))}
+   ${row('最終手取り',n(c.indFinal),n(c.ivFinal),n(c.cFinal),n(c.total),'tot')}
+  </table></div>
+  <div class="scroll" style="margin-top:12px"><table>
+   <tr><th>差額の内訳</th><th>個人事業</th><th>法人化</th><th>差（法人−個人）</th></tr>
+   <tr><td>税金合計（所得税＋住民税＋事業税／法人税等）</td><td>${n(c.taxInd)}</td><td>${n(c.taxCorp)}</td><td>${sgnYen(c.taxCorp-c.taxInd)}</td></tr>
+   <tr><td>社会保険料合計（会社負担含む）</td><td>${n(c.socInd)}</td><td>${n(c.socCorp)}</td><td>${sgnYen(c.socCorp-c.socInd)}</td></tr>
+   <tr class="tot"><td>最終手取りの差（法人−個人）</td><td colspan="2"></td><td>${sgnYen(c.diff)}</td></tr>
+  </table></div>
+  <h3>役員報酬と法人成りの有利額</h3>
+  <div class="chart">${svg}</div>
+  <div class="note" style="margin-top:8px">
+   ■ 法人に残る利益（法人留保）は役員が自由に使える手取りではなく、配当・役員報酬・退職金等で受け取る際に別途課税されます（Excelと同様、比較上は手取りに含めています）。<br>
+   ■ 法人税等は課税所得に応じた一括の実効税率（法人税・地方法人税・法人事業税・住民税割）＋均等割7万円で概算（Excelの「法人税率」シートと同じ）。<br>
+   ■ 基礎控除・給与所得控除は<b>令和8年分の改正後の額</b>で計算しています（添付Excelは令和7年分以前の額）。給与所得控除は190万円超の区間を「所得×割合＋定額」で計算（Excelの該当区間は符号が逆の式）。<br>
+   ■ 反映していないもの：法人設立費用・税理士報酬の増加、赤字法人の欠損金、自宅家賃の社宅化、役員退職金、消費税（設立初年度・2期目の免税）、社保の標準報酬等級・上限、同族会社の留保金課税、事業所得以外の所得。
+  </div>`;
 }
 
 /* ---- 事前準備アドバイス ---- */
@@ -483,9 +597,9 @@ function renderAdvice(P,b,B,cur,tr,calcS,vr){
   add('warn',`⑦ 予定納税（増収の翌年に発生）`,
     `申告納税額が15万円以上になると、翌年から7月31日・11月30日に各1/3ずつの予定納税が始まります。目標売上時の所得税 ${yen(tr.incomeTax)} の場合、予定納税額（年合計の2/3）は ${tr.incomeTax>=150000?'約 <b style="display:inline">'+yen(fl(tr.incomeTax/3,100)*2)+'</b>':'発生しません'}。売上が減った場合は減額申請（7/1〜7/31）も可能です。`);
   // 法人成り
-  const biz=tr.raw;
-  add(biz>=8000000?'warn':'',`⑧ 法人成り（法人化）の検討ライン`,
-    `目標売上時の事業所得は ${man(biz,0)}。個人の限界税率（所得税＋住民税）は約${pct(tr.margI*1.021+.10,0)}${tr.margI>=.33?'で、法人の実効税率（約34%以下）と同水準以上':''}。一般に事業所得が<b style="display:inline">700〜1,000万円</b>を超えるあたりから、役員報酬・社会保険（厚生年金）・消費税（設立初年度の免税等）・事務コストを含めた比較検討の余地があります。ただし社会保険料負担が増える点に注意し、税理士に個別試算を依頼してください。`);
+  const biz=tr.raw;const oc=ST.res[4].o;
+  add(oc.diff>0?'warn':'',`⑧ 法人成り（法人化）の検討ライン`,
+    `目標売上時の事業所得は ${man(biz,0)}。個人の限界税率（所得税＋住民税）は約${pct(tr.margI*1.021+.10,0)}。上の「法人成りの比較」の方式で試算すると、役員報酬を最適化（約${man(oc.pay,0)}）した場合の最終手取りは個人事業より <b style="display:inline">${sgnYen(oc.diff)}</b>（${oc.diff>0?'法人有利':'個人有利'}）です。ただし設立・維持コスト、社保負担の増加、法人留保の扱い、消費税の免税期間などを含めた個別試算が必要です。`);
   $('p-adv').innerHTML=`<h2>売上が増えた場合に事前に準備しておくべきこと</h2>${A.join('')}`;
 }
 function donationCap(P,tr){
