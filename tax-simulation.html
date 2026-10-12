@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>個人事業主 税負担シミュレーター（令和8年分）</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --blue:#2b6cb0;--blue-light:#ebf8ff;--blue-mid:#bee3f8;
+  --green:#276749;--green-bg:#f0fff4;--green-mid:#9ae6b4;
+  --orange:#c05621;--orange-bg:#fffaf0;--orange-mid:#fbd38d;
+  --red:#9b2c2c;--red-bg:#fff5f5;
+  --purple:#553c9a;--purple-bg:#faf5ff;
+  --gray:#4a5568;--gray-light:#f7fafc;--gray-border:#e2e8f0;
+  --shadow:0 4px 24px rgba(0,0,0,.08);
+}
+html,body{font-family:'Hiragino Kaku Gothic ProN','Meiryo','Yu Gothic',sans-serif;background:#f0f4f8;color:#2d3748;font-size:14px;line-height:1.6;}
+header{background:linear-gradient(135deg,#2b6cb0,#553c9a);color:#fff;padding:22px 16px;}
+header .in{max-width:1200px;margin:0 auto;}
+header h1{font-size:21px;font-weight:800;}
+header p{font-size:12.5px;opacity:.9;margin-top:4px;}
+.wrap{max-width:1200px;margin:0 auto;padding:16px;display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start;}
+@media(max-width:900px){.wrap{grid-template-columns:1fr;}}
+.panel{background:#fff;border-radius:14px;box-shadow:var(--shadow);padding:16px 18px;margin-bottom:14px;}
+.panel h2{font-size:15px;font-weight:800;color:#1a202c;margin-bottom:10px;}
+.panel h3{font-size:13.5px;font-weight:800;color:#1a202c;margin:14px 0 6px;}
+.f{margin-bottom:10px;}
+.f label{display:block;font-size:12px;font-weight:700;color:#4a5568;margin-bottom:3px;}
+.f .row{display:flex;align-items:center;gap:6px;}
+.f input[type=number],.f select{width:100%;border:1.5px solid var(--gray-border);border-radius:8px;padding:7px 10px;font-size:15px;font-weight:600;color:#1a202c;outline:none;background:#fff;font-family:inherit;text-align:right;}
+.f select{text-align:left;font-size:13.5px;}
+.f input:focus,.f select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(43,108,176,.15);}
+.f .u{font-size:12px;color:#718096;white-space:nowrap;min-width:34px;}
+.f .hint{font-size:11px;color:#718096;margin-top:2px;line-height:1.5;}
+.chk{display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:10px;}
+.chk input{width:17px;height:17px;}
+details{margin-top:6px;}summary{cursor:pointer;font-size:12.5px;color:var(--blue);font-weight:700;margin-bottom:8px;}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px;}
+.kpi{background:var(--gray-light);border-radius:12px;padding:12px 14px;border:1px solid var(--gray-border);}
+.kpi .l{font-size:11.5px;color:#718096;font-weight:700;}
+.kpi .v{font-size:20px;font-weight:800;color:#1a202c;margin-top:2px;}
+.kpi .s{font-size:11px;color:#718096;}
+.kpi.main{background:linear-gradient(135deg,#2b6cb0,#553c9a);color:#fff;border:none;}
+.kpi.main .l,.kpi.main .s{color:#e9d8fd;}.kpi.main .v{color:#fff;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th,td{padding:7px 9px;border-bottom:1px solid var(--gray-border);text-align:right;white-space:nowrap;}
+th:first-child,td:first-child{text-align:left;white-space:normal;}
+th{background:var(--gray-light);font-size:12px;color:#4a5568;}
+tr.sub td{color:#718096;font-size:12px;}
+tr.tot td{font-weight:800;background:var(--blue-light);}
+td.hl,th.hl{background:#fffbea;}
+.scroll{overflow-x:auto;}
+.bar{display:flex;height:26px;border-radius:7px;overflow:hidden;margin:10px 0 6px;}
+.bar div{height:100%;}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:#4a5568;}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle;}
+.note{font-size:11.5px;color:#718096;line-height:1.7;}
+.tl{list-style:none;}
+.tl li{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--gray-border);font-size:13px;}
+.tl .d{min-width:104px;font-weight:700;color:#2b6cb0;}
+.tl .a{margin-left:auto;font-weight:800;white-space:nowrap;}
+.tl li.past{opacity:.45;}
+.adv{border-left:4px solid var(--blue);background:var(--blue-light);border-radius:8px;padding:10px 14px;margin-bottom:10px;}
+.adv.warn{border-color:var(--orange);background:var(--orange-bg);}
+.adv.good{border-color:var(--green);background:var(--green-bg);}
+.adv.risk{border-color:var(--red);background:var(--red-bg);}
+.adv>b{display:block;font-size:13.5px;color:#1a202c;margin-bottom:2px;}
+.adv div{font-size:12.5px;color:#2d3748;}
+.slider{width:100%;-webkit-appearance:none;height:6px;border-radius:3px;background:#e2e8f0;outline:none;margin:10px 0 4px;}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--blue);cursor:pointer;}
+.sv{font-size:26px;font-weight:800;color:var(--blue);text-align:center;}
+.chart{position:relative;}
+.chart svg{width:100%;height:auto;display:block;}
+.tip{position:absolute;pointer-events:none;background:#1a202c;color:#fff;font-size:11.5px;padding:6px 9px;border-radius:7px;display:none;white-space:nowrap;line-height:1.5;z-index:5;}
+.btn{border:none;background:var(--blue);color:#fff;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px;}
+.btn.g{background:var(--gray-light);color:var(--gray);border:1px solid var(--gray-border);}
+.err{color:var(--red);font-size:12px;}
+@media print{header,.inputs,.noprint{display:none!important}.wrap{display:block}.panel{box-shadow:none;border:1px solid #ddd;break-inside:avoid}}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <h1>個人事業主 税負担シミュレーター（令和8年分）</h1>
+  <p>所得税・復興特別所得税／住民税／個人事業税／消費税／国保・年金を一括試算し、増収時の税負担と準備事項を確認します。入力はブラウザ内のみで処理されます。</p>
+</div></header>
+
+<div class="wrap">
+  <div class="inputs" id="inputs"></div>
+  <div id="out">
+    <div class="panel" id="p-now"></div>
+    <div class="panel" id="p-cash"></div>
+    <div class="panel" id="p-scn"></div>
+    <div class="panel" id="p-adv"></div>
+    <div class="panel"><h2>前提・注意事項</h2><div class="note" id="notes"></div>
+      <div style="margin-top:10px" class="noprint"><button class="btn g" onclick="window.print()">印刷／PDF保存</button> <button class="btn g" onclick="resetAll()">入力をリセット</button></div></div>
+  </div>
+</div>
+
+<script>
+/* ============ 入力定義 ============ */
+const GROUPS=[
+ {t:'① 今年の売上・経費（実績から年換算）',f:[
+  {id:'ytdSales',l:'現在までの売上累計（税抜）',u:'万円',d:600,m:1},
+  {id:'ytdExp',l:'現在までの経費累計',u:'万円',d:150,m:1,h:'専従者給与・事業税は別欄/含めてOK（事業税は支払年の経費）'},
+  {id:'months',l:'経過月数（1〜12）',u:'か月',d:9,m:0,step:1},
+  {id:'annSales',l:'年間売上見込み（手入力・任意）',u:'万円',d:'',m:1,h:'季節変動がある場合のみ。空欄なら年換算（累計×12÷月数）'},
+  {id:'annExp',l:'年間経費見込み（手入力・任意）',u:'万円',d:'',m:1},
+  {id:'senju',l:'青色事業専従者給与（年額）',u:'万円',d:0,m:1},
+  {id:'other',l:'事業所得以外の所得金額',u:'万円',d:0,m:1,h:'給与所得（控除後）・不動産所得など。合計所得に加算'},
+  {id:'carry',l:'青色申告の繰越損失',u:'万円',d:0,m:1}]},
+ {t:'② 事業・申告区分',f:[
+  {id:'blue',l:'申告区分（青色申告特別控除）',sel:[[650000,'青色65万円（e-Tax＋複式簿記）'],[550000,'青色55万円'],[100000,'青色10万円'],[0,'白色申告']],d:650000},
+  {id:'btType',l:'個人事業税の業種区分',sel:[[0.05,'第1種（物販・製造・IT等）5%'],[0.04,'第2種（畜産・水産等）4%'],[0.05,'第3種（税理士・デザイナー・コンサル等）5%'],[0.03,'第3種（あん摩・柔整等）3%'],[0,'対象外／非課税']],d:0.05,h:'業種判定は都道府県税事務所の基準による。要確認'}]},
+ {t:'③ 所得控除（年額）',f:[
+  {id:'spouse',l:'配偶者控除を受ける（配偶者の所得58万円以下）',chk:1,d:0},
+  {id:'dep1',l:'一般の控除対象扶養親族（16〜18歳・23〜69歳）',u:'人',d:0,m:0,step:1},
+  {id:'dep2',l:'特定扶養親族（19〜22歳）',u:'人',d:0,m:0,step:1},
+  {id:'dep3',l:'老人扶養親族（70歳以上）',u:'人',d:0,m:0,step:1},
+  {id:'shokibo',l:'小規模企業共済 掛金（年額）',u:'万円',d:0,m:1,h:'上限84万円'},
+  {id:'ideco',l:'iDeCo／国民年金基金 掛金（年額）',u:'万円',d:0,m:1,h:'上限81.6万円（国民年金付加保険料含む）'},
+  {id:'life',l:'生命保険料・地震保険料控除額',u:'万円',d:0,m:1,h:'所得税の控除額（最大12万円）。住民税は7万円上限で概算'},
+  {id:'med',l:'医療費控除額（足切後）',u:'万円',d:0,m:1},
+  {id:'don',l:'ふるさと納税などの寄附額',u:'万円',d:0,m:1,h:'確定申告で控除する場合（ワンストップ不可）'}]},
+ {t:'④ 国民健康保険・年金',f:[
+  {id:'kokuhoAct',l:'国保料の実額（年額・任意）',u:'万円',d:'',m:1,h:'入力すると基準額とし、増収時は増加分のみ試算。空欄なら下の概算式'},
+  {id:'nenkin',l:'国民年金保険料（年額）',u:'万円',d:21.5,m:1,h:'月額17,920円×12≒21.5万円'},
+  {id:'care',l:'介護分あり（40〜64歳）',chk:1,d:0}],
+  adv:[
+  {id:'kRate',l:'国保 所得割率（医療＋支援［＋介護］）',u:'%',d:10.4,m:0,step:0.01,h:'市区町村で異なる。東京23区の令和7年度目安'},
+  {id:'kFlat',l:'国保 均等割等（年額）',u:'万円',d:6.41,m:1},
+  {id:'kCap',l:'国保 賦課限度額（年額）',u:'万円',d:106,m:1,h:'医療65＋支援24＋介護17（令和7年度）。年度改定要確認'}]},
+ {t:'⑤ 消費税',f:[
+  {id:'ctMethod',l:'納税方式',sel:[['exempt','免税事業者（納税なし）'],['nikari','2割特例（令和8年分まで）'],['simple','簡易課税'],['general','原則課税']],d:'exempt',h:'課税事業者の場合、売上は税抜で入力'},
+  {id:'simpleType',l:'簡易課税の事業区分（みなし仕入率）',sel:[[0.9,'第1種 卸売 90%'],[0.8,'第2種 小売 80%'],[0.7,'第3種 製造等 70%'],[0.6,'第4種 その他 60%'],[0.5,'第5種 サービス業等 50%'],[0.4,'第6種 不動産 40%']],d:0.5},
+  {id:'taxRatio',l:'経費のうち課税仕入の割合（原則課税）',u:'%',d:70,m:0,step:1}]},
+ {t:'⑥ 資金繰り（任意）',f:[
+  {id:'prevTax',l:'前年分の所得税の申告納税額（予定納税基準額）',u:'万円',d:0,m:1,h:'確定申告書「申告納税額」。15万円以上で予定納税あり'},
+  {id:'prevBT',l:'今年納付する個人事業税（前年分・年額）',u:'万円',d:0,m:1,h:'納税通知書の年税額（8月・11月に半額ずつ）'}]}
+];
+const KEY='taxsim_v2';
+function render(){
+  const el=document.getElementById('inputs');let h='';
+  for(const g of GROUPS){
+    h+=`<div class="panel"><h2>${g.t}</h2>`;
+    const fld=f=>{
+      if(f.chk) return `<label class="chk"><input type="checkbox" id="${f.id}"> ${f.l}</label>`;
+      if(f.sel) return `<div class="f"><label>${f.l}</label><select id="${f.id}">${f.sel.map((o,i)=>`<option value="${i}">${o[1]}</option>`).join('')}</select>${f.h?`<div class="hint">${f.h}</div>`:''}</div>`;
+      return `<div class="f"><label>${f.l}</label><div class="row"><input type="number" id="${f.id}" step="${f.step||0.1}" min="0" inputmode="decimal"><span class="u">${f.u||''}</span></div>${f.h?`<div class="hint">${f.h}</div>`:''}</div>`;
+    };
+    h+=g.f.map(fld).join('');
+    if(g.adv) h+=`<details><summary>国保の概算式を調整する</summary>${g.adv.map(fld).join('')}</details>`;
+    h+='</div>';
+  }
+  el.innerHTML=h;
+}
+const ALL=GROUPS.flatMap(g=>[...g.f,...(g.adv||[])]);
+function setDefaults(){for(const f of ALL){const e=document.getElementById(f.id);if(f.chk)e.checked=!!f.d;else if(f.sel)e.value=Math.max(0,f.sel.findIndex(o=>o[0]===f.d));else e.value=f.d;}}
+function loadSaved(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(!s)return;for(const f of ALL){if(!(f.id in s))continue;const e=document.getElementById(f.id);if(f.chk)e.checked=!!s[f.id];else e.value=s[f.id];}}catch(e){}}
+function save(){try{const s={};for(const f of ALL){const e=document.getElementById(f.id);s[f.id]=f.chk?e.checked:e.value;}localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}}
+function resetAll(){try{localStorage.removeItem(KEY)}catch(e){};setDefaults();update();}
+const OPT=['annSales','annExp','kokuhoAct'];
+function readP(){
+  const P={};
+  for(const f of ALL){
+    const e=document.getElementById(f.id);
+    if(f.chk)P[f.id]=e.checked;
+    else if(f.sel)P[f.id]=f.sel[+e.value][0];
+    else{const raw=e.value;P[f.id]=raw===''?(OPT.includes(f.id)?null:0):(+raw||0)*(f.m?10000:1);}
+  }
+  return P;
+}
+
+/* ============ 税計算エンジン ============ */
+const fl=(x,u)=>Math.floor(x/u)*u;
+function incomeTaxBase(T){
+  const t=[[1950000,.05,0],[3300000,.10,97500],[6950000,.20,427500],[9000000,.23,636000],[18000000,.33,1536000],[40000000,.40,2796000],[Infinity,.45,4796000]];
+  for(const [lim,r,d] of t) if(T<=lim) return {tax:T*r-d,rate:r,lim};
+  return {tax:0,rate:0,lim:0};
+}
+function nextBracket(T){ // 課税所得Tから次の税率帯までの余白
+  const lims=[1950000,3300000,6950000,9000000,18000000,40000000];
+  const rates=[.05,.10,.20,.23,.33,.40,.45];
+  for(let i=0;i<lims.length;i++) if(T<=lims[i]) return {cur:rates[i],next:rates[i+1],room:lims[i]-T};
+  return {cur:.45,next:null,room:0};
+}
+function calc(P,S,E){
+  const R={};
+  const raw=S-E-P.senju;                       // 青色控除前の事業所得
+  const blueDed=Math.max(0,Math.min(P.blue,raw));
+  const biz=raw-blueDed;
+  const sum0=biz+P.other;
+  const G=Math.max(0,sum0-(P.carry||0));        // 合計所得金額
+  // 国保（概算）
+  const kRate=(P.kRate||0)/100+(P.care?0.0225:0), kFlat=(P.kFlat||0)+(P.care?16600:0);
+  const kEst=x=>Math.min(P.kCap||1060000,Math.max(0,x-430000)*kRate+kFlat);
+  R.kEst=kEst(Math.max(0,sum0));
+  R.kokuho=R.kEst;                              // 基準調整は呼び出し側で
+  if(P._kBaseDelta!=null) R.kokuho=Math.max(0,P._kBaseDelta+R.kEst);
+  const shaho=R.kokuho+P.nenkin+P.shokibo+P.ideco;
+  const n1=P.dep1/1, n2=P.dep2, n3=P.dep3;     // (人数は m:0 のため素の数)
+  /* 所得税 */
+  const kisoI=G<=4890000?1040000:G<=6550000?670000:G<=23500000?620000:G<=24000000?480000:G<=24500000?320000:G<=25000000?160000:0;
+  const spI=P.spouse?(G<=9000000?380000:G<=9500000?260000:G<=10000000?130000:0):0;
+  const depI=380000*n1+630000*n2+480000*n3;
+  const lifeI=Math.min(P.life,120000);
+  const donI=P.don>2000?Math.max(0,Math.min(P.don,G*.4)-2000):0;
+  const dedI=shaho+kisoI+spI+depI+lifeI+P.med+donI;
+  const TI=fl(Math.max(0,G-dedI),1000);
+  const ib=incomeTaxBase(TI);
+  R.incomeTax=fl(Math.max(0,ib.tax)*1.021,100);
+  R.TI=TI;R.margI=ib.rate;R.dedI=dedI;R.kisoI=kisoI;R.G=G;
+  /* 住民税 */
+  const kisoR=G<=24000000?430000:G<=24500000?290000:G<=25000000?150000:0;
+  const spR=P.spouse?(G<=9000000?330000:G<=9500000?220000:G<=10000000?110000:0):0;
+  const depR=330000*n1+450000*n2+380000*n3;
+  const dedR=shaho+kisoR+spR+depR+Math.min(P.life,70000)+P.med;
+  const TJ=fl(Math.max(0,G-dedR),1000);
+  const base10=TJ*.10;
+  const diff=(G<=24000000?50000:G<=24500000?30000:G<=25000000?10000:0)
+    +(P.spouse?(G<=9000000?50000:G<=9500000?30000:G<=10000000?10000:0):0)+50000*n1+180000*n2+100000*n3;
+  let chosei=0;
+  if(TJ>0&&G<=25000000) chosei=TJ<=2000000?Math.min(diff,TJ)*.05:Math.max(diff-(TJ-2000000),50000)*.05;
+  let credit=0;
+  if(P.don>2000){
+    const d=Math.max(0,Math.min(P.don,G*.3)-2000);
+    const sp=Math.min(d*Math.max(0,.9-ib.rate*1.021),Math.max(0,base10-chosei)*.2);
+    credit=d*.10+sp;
+  }
+  const nDep=(P.spouse?1:0)+n1+n2+n3;
+  const nonTaxLimit=nDep>0?350000*(1+nDep)+100000+210000:450000;
+  const nonTax=G<=nonTaxLimit;
+  R.resShotoku=nonTax?0:fl(Math.max(0,base10-chosei-credit),100);
+  R.resKintou=nonTax?0:6000;
+  R.resident=R.resShotoku+R.resKintou;
+  R.chosei=chosei;R.TJ=TJ;
+  /* 個人事業税 */
+  const btBase=fl(Math.max(0,raw-(P.carry||0)-2900000),1000);
+  R.bizTax=fl(btBase*P.btType,100);
+  R.btBase=btBase;
+  /* 消費税 */
+  let ct=0;
+  if(P.ctMethod==='nikari')ct=S*.10*.2;
+  else if(P.ctMethod==='simple')ct=S*.10*(1-P.simpleType);
+  else if(P.ctMethod==='general')ct=S*.10-E*((P.taxRatio??70)/100)*10/110;
+  R.consumption=fl(Math.max(0,ct),100);
+  R.ctSimple=fl(S*.10*(1-P.simpleType),100);
+  R.ctGeneral=fl(Math.max(0,S*.10-E*((P.taxRatio??70)/100)*10/110),100);
+  R.ctNikari=fl(S*.02,100);
+  R.taxes=R.incomeTax+R.resident+R.bizTax+R.consumption;
+  R.nenkin=P.nenkin;
+  R.soc=R.kokuho+P.nenkin;
+  R.burden=R.taxes+R.soc;
+  R.S=S;R.E=E;R.raw=raw;R.biz=biz;R.blueDed=blueDed;
+  R.net=S-E-P.senju+P.other-R.burden;
+  return R;
+}
+/* 現状値の確定（年換算など） */
+function baseline(P){
+  const m=Math.min(12,Math.max(1,P.months||1));
+  const S=P.annSales!=null?P.annSales:Math.round((P.ytdSales||0)*12/m);
+  const E=P.annExp!=null?P.annExp:Math.round((P.ytdExp||0)*12/m);
+  return {S,E};
+}
+/* 国保実額の補正付き計算 */
+function calcAt(P,S,E,B){
+  const Q={...P};
+  if(P.kokuhoAct!=null&&B){Q._kBaseDelta=P.kokuhoAct-B.kEst0;}
+  return calc(Q,S,E);
+}
+
+/* ============ 表示ユーティリティ ============ */
+const yen=n=>Math.round(n).toLocaleString('ja-JP')+'円';
+const man=(n,d=1)=>{const v=n/10000;return v.toLocaleString('ja-JP',{maximumFractionDigits:d})+'万円';};
+const pct=(x,d=1)=>(x*100).toFixed(d)+'%';
+const sgn=n=>(n>=0?'+':'')+man(n);
+const $=id=>document.getElementById(id);
+
+/* ============ メイン更新 ============ */
+let ST={};
+function update(){
+  save();
+  const P=readP();
+  P.dep1=(P.dep1||0)/1;
+  const b=baseline(P);
+  // 国保概算の基準値
+  const R0e=calc({...P,kokuhoAct:null},b.S,b.E);
+  const B={kEst0:R0e.kEst};
+  const cur=calcAt(P,b.S,b.E,B);
+  ST={P,b,B,cur};
+  renderNow(P,b,cur);
+  renderCash(P,cur);
+  renderScenario(P,b,B,cur);
+  renderNotes();
+}
+
+function renderNow(P,b,r){
+  const biz=r.raw;
+  const eff=biz>0?r.burden/biz:0;
+  const parts=[
+   ['所得税・復興税',r.incomeTax,'#2b6cb0'],['住民税',r.resident,'#38a169'],['個人事業税',r.bizTax,'#dd6b20'],
+   ['消費税',r.consumption,'#805ad5'],['国民健康保険',r.kokuho,'#d53f8c'],['国民年金',r.nenkin,'#718096']];
+  const tot=parts.reduce((a,p)=>a+p[1],0)||1;
+  $('p-now').innerHTML=`
+  <h2>今年（令和8年分）の税負担見込み</h2>
+  <div class="kpis">
+   <div class="kpi"><div class="l">年間売上（見込み）</div><div class="v">${man(b.S,0)}</div><div class="s">経費 ${man(b.E,0)}${P.senju?` ／専従者給与 ${man(P.senju,0)}`:''}</div></div>
+   <div class="kpi"><div class="l">事業所得（青色控除前）</div><div class="v">${man(biz,0)}</div><div class="s">青色控除 ${man(r.blueDed,0)} 後 ${man(r.biz,0)}</div></div>
+   <div class="kpi main"><div class="l">税金＋社会保険の合計</div><div class="v">${man(r.burden,0)}</div><div class="s">事業所得比 ${pct(eff)}</div></div>
+   <div class="kpi"><div class="l">手取り（税・社保控除後）</div><div class="v">${man(r.net,0)}</div><div class="s">月あたり ${man(r.net/12,1)}</div></div>
+  </div>
+  <div class="bar">${parts.map(p=>`<div style="width:${p[1]/tot*100}%;background:${p[2]}" title="${p[0]}"></div>`).join('')}</div>
+  <div class="legend">${parts.map(p=>`<span><i style="background:${p[2]}"></i>${p[0]} ${pct(p[1]/tot,0)}</span>`).join('')}</div>
+  <div class="scroll" style="margin-top:12px"><table>
+   <tr><th>項目</th><th>見込額</th><th>備考（いつ払うか）</th></tr>
+   <tr><td>所得税・復興特別所得税</td><td>${yen(r.incomeTax)}</td><td style="text-align:left;white-space:normal;font-size:12px">課税所得 ${man(r.TI,0)}／税率${pct(r.margI,0)}。令和9年3月15日まで</td></tr>
+   <tr><td>住民税（所得割＋均等割）</td><td>${yen(r.resident)}</td><td style="text-align:left;white-space:normal;font-size:12px">令和9年6月〜（4期 or 一括）。所得割${yen(r.resShotoku)}／均等割${yen(r.resKintou)}</td></tr>
+   <tr><td>個人事業税</td><td>${yen(r.bizTax)}</td><td style="text-align:left;white-space:normal;font-size:12px">令和9年8月・11月。事業主控除290万円後 ${man(r.btBase,0)}</td></tr>
+   <tr><td>消費税・地方消費税</td><td>${yen(r.consumption)}</td><td style="text-align:left;white-space:normal;font-size:12px">${P.ctMethod==='exempt'?'免税事業者（納税なし）':'令和9年3月31日まで'}</td></tr>
+   <tr class="sub"><td>国民健康保険料（概算）</td><td>${yen(r.kokuho)}</td><td style="text-align:left;white-space:normal;font-size:12px">今年の所得は来年度（令和9年6月〜）の保険料に反映</td></tr>
+   <tr class="sub"><td>国民年金保険料</td><td>${yen(r.nenkin)}</td><td></td></tr>
+   <tr class="tot"><td>合計（税＋社保）</td><td>${yen(r.burden)}</td><td></td></tr>
+  </table></div>
+  ${r.raw<0?'<div class="err" style="margin-top:8px">事業所得が赤字です。損益通算・繰越損失の扱いは別途確認してください。</div>':''}`;
+}
+
+function renderCash(P,r){
+  const now=new Date();
+  const items=[];
+  const add=(d,t,a,desc)=>items.push({d,t,a,desc});
+  const y=now.getFullYear();
+  const prevT=P.prevTax||0;
+  const yoteiOn=prevT>=150000;
+  const third=fl(prevT/3,100);
+  const yote=yoteiOn?third*2:0;
+  if(yoteiOn){add(new Date(y,6,31),'7/31',third,'所得税 予定納税 第1期');add(new Date(y,10,30),'11/30',third,'所得税 予定納税 第2期');}
+  if(P.prevBT){add(new Date(y,7,31),'8月末',P.prevBT/2,'個人事業税（前年分）第1期');add(new Date(y,10,30),'11月末',P.prevBT/2,'個人事業税（前年分）第2期');}
+  const filing=Math.max(0,r.incomeTax-yote);
+  add(new Date(y+1,2,15),`${y+1}/3/15`,filing,`確定申告・所得税の納付${yote?`（予定納税${man(yote)}控除後）`:''}`);
+  if(P.ctMethod!=='exempt')add(new Date(y+1,2,31),`${y+1}/3/31`,r.consumption,'消費税・地方消費税の納付');
+  add(new Date(y+1,5,30),`${y+1}/6〜`,r.resident,'住民税（年4期：6・8・10・1月）');
+  add(new Date(y+1,7,31),`${y+1}/8月末`,r.bizTax/2,'個人事業税 第1期');
+  add(new Date(y+1,10,30),`${y+1}/11月末`,r.bizTax/2,'個人事業税 第2期');
+  add(new Date(y+1,5,30),`${y+1}/6〜`,r.kokuho,'国民健康保険料（今年の所得で計算、年10回前後）');
+  items.sort((a,b)=>a.d-b.d);
+  const reserve=(r.incomeTax+r.resident+r.bizTax+r.consumption);
+  $('p-cash').innerHTML=`<h2>これから払う税金のスケジュール（資金繰り）</h2>
+  <ul class="tl">${items.map(i=>`<li class="${i.d<now?'past':''}"><span class="d">${i.t}</span><span>${i.desc}</span><span class="a">${yen(i.a)}</span></li>`).join('')}</ul>
+  <div class="adv good" style="margin-top:12px"><b>納税用口座に確保する目安</b><div>今年の所得にかかる所得税・住民税・個人事業税${P.ctMethod!=='exempt'?'・消費税':''}の合計は <b style="display:inline">${yen(reserve)}</b>（売上の${pct(reserve/(r.S||1))}／月あたり約${yen(reserve/12)}）。国保・年金を含めた総額は ${yen(r.burden)}。売上が入るたびに一定率を別口座へ移す運用がおすすめです。</div></div>
+  ${yoteiOn?'':'<div class="note">※前年分の所得税が15万円未満の場合は予定納税はありません。ただし今年の所得税が15万円以上なら、来年は予定納税（7月・11月）が発生します。</div>'}`;
+}
+
+/* ---- 増収シナリオ ---- */
+let target=null;
+function renderScenario(P,b,B,cur){
+  const baseRatio=b.S>0?b.E/b.S:0;
+  const maxS=Math.max(b.S*4,30000000);
+  if(target==null){target=Math.round(Math.max(b.S*1.5,b.S+5000000)/100000)*100000;}
+  const rv=$('varRatio')?$('varRatio').value:'';
+  const vr=rv===''?baseRatio:Math.min(1,Math.max(0,+rv/100));
+  ST.vr=vr;
+  const E_at=S=>Math.max(0,b.E+(S-b.S)*vr);
+  const calcS=S=>calcAt(P,S,E_at(S),B);
+  const cols=[['現状見込',b.S],['×1.5',b.S*1.5],['×2',b.S*2],['×3',b.S*3],['目標売上',target]];
+  const res=cols.map(c=>({n:c[0],S:c[1],r:calcS(c[1])}));
+  const rows=[
+   ['年間売上',r=>man(r.S,0)],['事業所得（青色控除前）',r=>man(r.raw,0)],
+   ['所得税・復興税',r=>yen(r.incomeTax)],['住民税',r=>yen(r.resident)],['個人事業税',r=>yen(r.bizTax)],
+   ['消費税',r=>yen(r.consumption)],['国保＋年金',r=>yen(r.soc)],
+   ['税＋社保 合計',r=>yen(r.burden),'tot'],['手取り',r=>yen(r.net),'tot'],
+   ['事業所得に対する負担率',r=>r.raw>0?pct(r.burden/r.raw):'-','sub'],
+   ['所得税の税率帯',r=>pct(r.margI,0),'sub']];
+  const hasInput=!!$('tgt');
+  if(!hasInput){
+    $('p-scn').innerHTML=`<h2>売上が増えた場合の税負担</h2>
+    <div class="f"><label>目標とする年間売上</label><div class="sv" id="tgtv"></div><input type="range" class="slider" id="tgt" min="0" max="${maxS}" step="100000"><div class="legend" style="justify-content:space-between"><span>0</span><span id="tgtmax"></span></div></div>
+    <div class="f"><label>増収分にかかる経費率（％）</label><div class="row"><input type="number" id="varRatio" step="1" min="0" max="100"><span class="u">%</span></div><div class="hint">売上が増えたとき、増加分の何割が経費になるか。初期値は現在の経費率。固定費は増えない前提。</div></div>
+    <div id="scnBody"></div>`;
+    $('tgt').addEventListener('input',e=>{target=+e.target.value;update();});
+    $('varRatio').addEventListener('input',update);
+    $('varRatio').value=Math.round(baseRatio*100);
+    update();return;
+  }
+  $('tgt').max=maxS;$('tgt').value=target;$('tgtv').textContent=man(target,0);$('tgtmax').textContent=man(maxS,0);
+  // 限界負担率：追加利益1円あたりの税・社保
+  const dS=1000000,rA=calcS(target),rB=calcS(target+dS);
+  const dProfit=dS*(1-vr);
+  const marg=dProfit>0?(rB.burden-rA.burden)/dProfit:0;
+  const margTax=dProfit>0?(rB.taxes-rA.taxes)/dProfit:0;
+  ST.res=res;ST.marg=marg;
+  // チャート
+  const lo=Math.max(0,Math.min(b.S*.3,target*.3)),hi=maxS;
+  const pts=[];for(let i=0;i<=48;i++){const S=lo+(hi-lo)*i/48;const r=calcS(S);pts.push({S,burden:r.burden,net:r.net,raw:r.raw});}
+  ST.pts=pts;
+  $('scnBody').innerHTML=`
+   <div class="kpis">
+    <div class="kpi"><div class="l">目標売上時の税＋社保</div><div class="v">${man(res[4].r.burden,0)}</div><div class="s">現状比 ${sgn(res[4].r.burden-cur.burden)}</div></div>
+    <div class="kpi"><div class="l">目標売上時の手取り</div><div class="v">${man(res[4].r.net,0)}</div><div class="s">現状比 ${sgn(res[4].r.net-cur.net)}</div></div>
+    <div class="kpi main"><div class="l">追加利益1万円あたりの税・社保</div><div class="v">${yen(marg*10000)}</div><div class="s">うち税のみ ${yen(margTax*10000)}（限界負担率 ${pct(marg,0)}）</div></div>
+   </div>
+   <div class="chart" id="chart"></div>
+   <div class="scroll" style="margin-top:10px"><table>
+    <tr><th></th>${res.map((c,i)=>`<th class="${i==4?'hl':''}">${c.n}</th>`).join('')}</tr>
+    ${rows.map(rw=>`<tr class="${rw[2]||''}"><td>${rw[0]}</td>${res.map((c,i)=>`<td class="${i==4?'hl':''}">${rw[1](c.r)}</td>`).join('')}</tr>`).join('')}
+   </table></div>`;
+  drawChart(b,target,cur,res[4].r);
+  renderAdvice(P,b,B,cur,res[4].r,calcS,vr);
+}
+
+function drawChart(b,target,cur,tr){
+  const pts=ST.pts;const W=720,H=300,L=58,Rr=14,T=14,Bm=36;
+  const xs=pts.map(p=>p.S),maxY=Math.max(...pts.map(p=>Math.max(p.burden,p.net,0)))*1.05||1;
+  const x=S=>L+(S-xs[0])/(xs[xs.length-1]-xs[0])*(W-L-Rr),y=v=>T+(1-Math.max(0,v)/maxY)*(H-T-Bm);
+  const path=k=>pts.map((p,i)=>(i?'L':'M')+x(p.S).toFixed(1)+','+y(p[k]).toFixed(1)).join('');
+  let g='';
+  for(let i=0;i<=4;i++){const v=maxY*i/4;g+=`<line x1="${L}" x2="${W-Rr}" y1="${y(v)}" y2="${y(v)}" stroke="#e2e8f0"/><text x="${L-6}" y="${y(v)+4}" font-size="11" fill="#718096" text-anchor="end">${Math.round(v/10000).toLocaleString()}</text>`;}
+  for(let i=0;i<=4;i++){const S=xs[0]+(xs[xs.length-1]-xs[0])*i/4;g+=`<text x="${x(S)}" y="${H-12}" font-size="11" fill="#718096" text-anchor="middle">${Math.round(S/10000).toLocaleString()}</text>`;}
+  const mk=(S,c,lab)=>S>=xs[0]&&S<=xs[xs.length-1]?`<line x1="${x(S)}" x2="${x(S)}" y1="${T}" y2="${H-Bm}" stroke="${c}" stroke-dasharray="4 3"/><text x="${x(S)+4}" y="${T+10}" font-size="11" fill="${c}" font-weight="700">${lab}</text>`:'';
+  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="売上別の税・社保負担と手取り">
+   ${g}${mk(b.S,'#718096','現状')}${mk(target,'#c05621','目標')}
+   <path d="${path('burden')}" fill="none" stroke="#c53030" stroke-width="2.5"/>
+   <path d="${path('net')}" fill="none" stroke="#2b6cb0" stroke-width="2.5"/>
+   <text x="${W/2}" y="${H-1}" font-size="11" fill="#718096" text-anchor="middle">年間売上（万円）／縦軸：万円</text>
+   <line id="hv" x1="0" x2="0" y1="${T}" y2="${H-Bm}" stroke="#2d3748" opacity="0"/>
+  </svg>
+  <div class="legend" style="margin-top:2px"><span><i style="background:#c53030"></i>税＋社保 合計</span><span><i style="background:#2b6cb0"></i>手取り</span></div>
+  <div class="tip" id="tip"></div>`;
+  const c=$('chart');c.innerHTML=svg;
+  const s=c.querySelector('svg');
+  s.addEventListener('mousemove',ev=>{
+    const rc=s.getBoundingClientRect();const px=(ev.clientX-rc.left)/rc.width*W;
+    let best=pts[0],bd=1e18;for(const p of pts){const d=Math.abs(x(p.S)-px);if(d<bd){bd=d;best=p;}}
+    const hv=s.querySelector('#hv');hv.setAttribute('x1',x(best.S));hv.setAttribute('x2',x(best.S));hv.setAttribute('opacity','.5');
+    const tip=$('tip');tip.style.display='block';
+    tip.innerHTML=`売上 ${man(best.S,0)}<br>税＋社保 ${man(best.burden,0)}<br>手取り ${man(best.net,0)}<br>負担率 ${best.raw>0?pct(best.burden/best.raw,0):'-'}`;
+    tip.style.left=Math.min(rc.width-130,Math.max(0,(x(best.S)/W)*rc.width+10))+'px';tip.style.top='10px';
+  });
+  s.addEventListener('mouseleave',()=>{$('tip').style.display='none';s.querySelector('#hv').setAttribute('opacity','0');});
+}
+
+/* ---- 事前準備アドバイス ---- */
+function renderAdvice(P,b,B,cur,tr,calcS,vr){
+  const A=[];
+  const add=(cls,t,body)=>A.push(`<div class="adv ${cls}"><b>${t}</b><div>${body}</div></div>`);
+  const S1=ST.res[4].S;
+  const reserve=tr.incomeTax+tr.resident+tr.bizTax+tr.consumption;
+  add('good','① 納税資金の積立（目標売上の場合）',
+    `所得税・住民税・個人事業税${P.ctMethod!=='exempt'?'・消費税':''}で年 <b style="display:inline">${yen(reserve)}</b>（売上の${pct(reserve/(S1||1))}、月約${yen(reserve/12)}）。さらに国保・年金で ${yen(tr.soc)}。納税は<b style="display:inline">翌年</b>に集中するため、増収した年の収入を使い切らないことが最重要です。`);
+  // 税率帯
+  const nb=nextBracket(tr.TI);
+  add('',`② 所得税の税率帯と限界税率`,
+    `目標売上時の課税所得は ${man(tr.TI,0)}（所得税率${pct(tr.margI,0)}${nb.next?`。あと${man(nb.room,0)}で${pct(nb.next,0)}に上昇`:''}）。所得税＋住民税（10%）＋個人事業税${pct(P.btType,0)}を合わせた<b style="display:inline">追加利益1円あたりの税率</b>は概ね <b style="display:inline">${pct(tr.margI*1.021+.10+(tr.btBase>0?P.btType:0),0)}</b>、国保・年金も含めた実効的な限界負担率は ${pct(ST.marg,0)} です。`);
+  // 消費税
+  let ctBody=`課税売上高（個人は<b style="display:inline">2年前</b>の売上）が1,000万円を超えると課税事業者になります。また前年1〜6月の課税売上高（または給与支払額）が1,000万円を超えた場合も翌年から課税事業者です。インボイス登録済みの場合はすでに課税事業者です。`;
+  if(S1>=10000000){
+    ctBody+=`<br>目標売上 ${man(S1,0)} での消費税試算：原則課税 <b style="display:inline">${yen(tr.ctGeneral)}</b>／簡易課税（みなし仕入率${pct(P.simpleType,0)}）<b style="display:inline">${yen(tr.ctSimple)}</b>／2割特例 ${yen(tr.ctNikari)}（<b style="display:inline">令和8年分まで</b>。令和9年分以降は原則課税か簡易課税）。簡易課税の選択は<b style="display:inline">適用を受けたい課税期間の前日まで</b>に届出が必要です。`;
+    add(P.ctMethod==='exempt'?'risk':'warn','③ 消費税（課税事業者化・特例終了への備え）',ctBody);
+  }else add('','③ 消費税の判定ライン',ctBody+`<br>目標売上は ${man(S1,0)} で1,000万円未満ですが、売上が1,000万円に近づく場合は、課税事業者になる年・簡易課税の届出期限を事前にカレンダーに入れておきましょう。`);
+  // 個人事業税
+  add('',`④ 個人事業税`,
+    `事業主控除は年290万円。目標売上時の課税標準 ${man(tr.btBase,0)} に税率${pct(P.btType,0)}で <b style="display:inline">${yen(tr.bizTax)}</b>。納付は翌年8月・11月で、<b style="display:inline">納付した年の必要経費</b>になります。青色申告特別控除は事業税の計算では使えません（青色控除前の所得で課税）。`);
+  // 控除枠
+  const savings=[];
+  const sv=(label,key,max,mess)=>{
+    const curv=P[key];if(curv>=max)return;
+    const r2=calcAt({...P,[key]:max},S1,Math.max(0,b.E+(S1-b.S)*vr),B);
+    const d=tr.taxes-r2.taxes;
+    if(d>0)savings.push(`<li>${label}：あと${man(max-curv,1)}拠出すると、所得税＋住民税が約 <b>${yen(d)}</b> 減少 ${mess||''}</li>`);
+  };
+  sv('小規模企業共済（上限84万円/年）','shokibo',840000,'（廃業・退職時に受取。掛金は全額所得控除）');
+  sv('iDeCo／国民年金基金（上限81.6万円/年）','ideco',816000,'（原則60歳まで引出不可）');
+  const don=donationCap(P,tr);
+  if(don) savings.push(`<li>ふるさと納税の寄附上限目安：約 <b>${yen(don)}</b>（自己負担2,000円。事業主は確定申告で控除。住民税所得割の20%基準で概算）</li>`);
+  savings.push(`<li>青色申告特別控除：現在${man(P.blue,0)}。65万円は<b>e-Taxでの申告と電子帳簿保存（または優良な電子帳簿）</b>が要件</li>`);
+  savings.push(`<li>経営セーフティ共済：年最大240万円を必要経費にできるが、課税の<b>繰延</b>であり解約時に収入計上。近年、解約手当金や再加入に関する制度変更があるため最新要件を要確認</li>`);
+  savings.push(`<li>青色事業専従者給与：家族が実際に従事する場合、届出のうえ適正額を経費化（家族側の所得税・社保・扶養への影響も考慮）</li>`);
+  add('good','⑤ 事前に使える節税・準備策（目標売上時の効果）',`<ul style="padding-left:18px;margin-top:4px">${savings.join('')}</ul><div class="note" style="margin-top:4px">年内（12月31日まで）に掛金払込が必要なものが多く、対象年の損益確定前に動くことが重要です。</div>`);
+  // 国保
+  const kCap=P.kCap||1060000;
+  add(tr.kokuho>=kCap*.98?'warn':'',`⑥ 国民健康保険料の増加`,
+    `目標売上時の国保料（概算）は <b style="display:inline">${yen(tr.kokuho)}</b>（現状比 ${sgn(tr.kokuho-cur.kokuho)}）${tr.kokuho>=kCap*.98?'で賦課限度額に到達します':''}。国保料は<b style="display:inline">前年所得を基に翌年度（6月〜）</b>に決まるため、増収の翌年に負担が来ます。国民年金基金・iDeCo・小規模企業共済は所得控除となり保険料の算定所得も下がります（国保の基礎は「所得−43万円」）。`);
+  // 予定納税
+  add('warn',`⑦ 予定納税（増収の翌年に発生）`,
+    `申告納税額が15万円以上になると、翌年から7月31日・11月30日に各1/3ずつの予定納税が始まります。目標売上時の所得税 ${yen(tr.incomeTax)} の場合、予定納税額（年合計の2/3）は ${tr.incomeTax>=150000?'約 <b style="display:inline">'+yen(fl(tr.incomeTax/3,100)*2)+'</b>':'発生しません'}。売上が減った場合は減額申請（7/1〜7/31）も可能です。`);
+  // 法人成り
+  const biz=tr.raw;
+  add(biz>=8000000?'warn':'',`⑧ 法人成り（法人化）の検討ライン`,
+    `目標売上時の事業所得は ${man(biz,0)}。個人の限界税率（所得税＋住民税）は約${pct(tr.margI*1.021+.10,0)}${tr.margI>=.33?'で、法人の実効税率（約34%以下）と同水準以上':''}。一般に事業所得が<b style="display:inline">700〜1,000万円</b>を超えるあたりから、役員報酬・社会保険（厚生年金）・消費税（設立初年度の免税等）・事務コストを含めた比較検討の余地があります。ただし社会保険料負担が増える点に注意し、税理士に個別試算を依頼してください。`);
+  $('p-adv').innerHTML=`<h2>売上が増えた場合に事前に準備しておくべきこと</h2>${A.join('')}`;
+}
+function donationCap(P,tr){
+  const rate=tr.margI*1.021;
+  const base=Math.max(0,(tr.TJ*.10)-tr.chosei);
+  const denom=.9-rate;
+  if(base<=0||denom<=0)return 0;
+  return Math.floor((base*.2/denom+2000)/1000)*1000;
+}
+function renderNotes(){
+  $('notes').innerHTML=`
+  <p>■ 前提：個人事業主（居住者）・令和8年（2026年）分、東京都等の標準税率（住民税所得割10%・均等割6,000円［森林環境税含む］）。所得税の基礎控除は令和8年度改正後（合計所得489万円以下104万円／655万円以下67万円／2,350万円以下62万円…）、住民税の基礎控除は43万円で計算。</p>
+  <p>■ 反映していないもの：配偶者特別控除・特定親族特別控除・雑損/寄附金（認定NPO等）控除・住宅ローン控除・源泉徴収済税額・配当/譲渡所得・事業用資産の特例・ふるさと納税のワンストップ特例・住民税の自治体独自の取扱い・令和9年分以降の防衛特別所得税。</p>
+  <p>■ 国保料は自治体・世帯構成で大きく異なるため、実額が分かる場合は④に入力してください。個人事業税の業種区分は都道府県の判定によります。消費税は売上を税抜、経費を税込と仮定した簡易計算です。</p>
+  <p>■ 本ツールは概算の試算であり、税務申告・税務判断を保証するものではありません。実際の申告・意思決定にあたっては、最新の法令・通達を確認のうえ税理士等の専門家にご確認ください。</p>`;
+}
+
+/* ============ 初期化 ============ */
+render();setDefaults();loadSaved();
+document.getElementById('inputs').addEventListener('input',update);
+document.getElementById('inputs').addEventListener('change',update);
+update();
+</script>
+</body>
+</html>
