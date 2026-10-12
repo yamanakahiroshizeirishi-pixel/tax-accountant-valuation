@@ -124,13 +124,21 @@ const GROUPS=[
   {id:'med',l:'医療費控除額（足切後）',u:'万円',d:0,m:1},
   {id:'don',l:'ふるさと納税などの寄附額',u:'万円',d:0,m:1,h:'確定申告で控除する場合（ワンストップ不可）'}]},
  {t:'④ 国民健康保険・年金',f:[
-  {id:'kokuhoAct',l:'国保料の実額（年額・任意）',u:'万円',d:'',m:1,h:'入力すると基準額とし、増収時は増加分のみ試算。空欄なら下の概算式'},
-  {id:'nenkin',l:'国民年金保険料（年額）',u:'万円',d:21.5,m:1,h:'月額17,920円×12≒21.5万円'},
+  {id:'kokuhoAct',l:'今年（暦年）に実際に支払う国保料（任意）',u:'万円',d:'',m:1,h:'所得税・住民税の社会保険料控除に使う額（前年所得・令和8年度料率による実額）。入力すると将来の見込みは「この額＋増収分の増加額」で試算。空欄なら下の概算式で代用'},
+  {id:'nenkin',l:'今年（暦年）に支払う国民年金保険料',u:'万円',d:21.381,m:1,h:'令和8年(2026)の暦年分：17,510円×3か月＋17,920円×9か月＝213,810円。令和8年度12か月分は215,040円。前納・免除・加入月数で変わります'},
+  {id:'nIns',l:'国保の加入者数',u:'人',d:1,m:0,step:1,h:'均等割は加入者数に応じて増えます。軽減判定は反映していません'},
   {id:'care',l:'介護分あり（40〜64歳）',chk:1,d:0}],
   adv:[
-  {id:'kRate',l:'国保 所得割率（医療＋支援［＋介護］）',u:'%',d:10.4,m:0,step:0.01,h:'市区町村で異なる。東京23区の令和7年度目安'},
-  {id:'kFlat',l:'国保 均等割等（年額）',u:'万円',d:6.41,m:1},
-  {id:'kCap',l:'国保 賦課限度額（年額）',u:'万円',d:106,m:1,h:'医療65＋支援24＋介護17（令和7年度）。年度改定要確認'}]},
+  {id:'kRate',l:'医療＋支援金分 所得割率',u:'%',d:10.31,m:0,step:0.01,h:'令和8年度・渋谷区（医療7.51＋支援金2.80）。自治体の公表値に置き換えてください'},
+  {id:'kFlat',l:'医療＋支援金分 均等割（1人・年額）',u:'万円',d:6.52,m:1},
+  {id:'kcRate',l:'子ども・子育て支援金分 所得割率',u:'%',d:0.27,m:0,step:0.01},
+  {id:'kcFlat',l:'子ども・子育て支援金分 均等割（1人）',u:'万円',d:0.1873,m:1},
+  {id:'kdRate',l:'介護分 所得割率（40〜64歳）',u:'%',d:2.43,m:0,step:0.01},
+  {id:'kdFlat',l:'介護分 均等割（1人）',u:'万円',d:1.78,m:1},
+  {id:'capM',l:'賦課限度額：医療＋支援金分',u:'万円',d:93,m:1,h:'医療67＋支援金26（令和8年度の法定額。自治体により異なる場合あり）'},
+  {id:'capK',l:'賦課限度額：子ども・子育て支援金分',u:'万円',d:3,m:1},
+  {id:'capC',l:'賦課限度額：介護分',u:'万円',d:17,m:1,h:'合計113万円（介護なしは96万円）'}]},
+
  {t:'⑤ 消費税',f:[
   {id:'ctMethod',l:'納税方式',sel:[['exempt','免税事業者（納税なし）'],['nikari','2割特例（令和8年分まで）'],['simple','簡易課税'],['general','原則課税']],d:'exempt',h:'課税事業者の場合、売上は税抜で入力'},
   {id:'simpleType',l:'簡易課税の事業区分（みなし仕入率）',sel:[[0.9,'第1種 卸売 90%'],[0.8,'第2種 小売 80%'],[0.7,'第3種 製造等 70%'],[0.6,'第4種 その他 60%'],[0.5,'第5種 サービス業等 50%'],[0.4,'第6種 不動産 40%']],d:0.5},
@@ -146,7 +154,7 @@ const GROUPS=[
   {id:'prevTax',l:'前年分の所得税の申告納税額（予定納税基準額）',u:'万円',d:0,m:1,h:'確定申告書「申告納税額」。15万円以上で予定納税あり'},
   {id:'prevBT',l:'今年納付する個人事業税（前年分・年額）',u:'万円',d:0,m:1,h:'納税通知書の年税額（8月・11月に半額ずつ）'}]}
 ];
-const KEY='taxsim_v2';
+const KEY='taxsim_v3';
 function render(){
   const el=document.getElementById('inputs');let h='';
   for(const g of GROUPS){
@@ -174,7 +182,7 @@ function readP(){
     const e=document.getElementById(f.id);
     if(f.chk)P[f.id]=e.checked;
     else if(f.sel)P[f.id]=f.sel[+e.value][0];
-    else{const raw=e.value;P[f.id]=raw===''?(OPT.includes(f.id)?null:0):(+raw||0)*(f.m?10000:1);}
+    else{const raw=e.value;P[f.id]=raw===''?(OPT.includes(f.id)?null:0):(f.m?Math.round((+raw||0)*10000):(+raw||0));}
   }
   return P;
 }
@@ -200,13 +208,19 @@ function calc(P,S,E){
   const sum0=biz+P.other;
   const G=Math.max(0,sum0-(P.carry||0));        // 合計所得金額
   // 国保（概算）
-  const kRate=(P.kRate||0)/100+(P.care?0.0225:0), kFlat=(P.kFlat||0)+(P.care?16600:0);
-  const kEst=x=>Math.min(P.kCap||1060000,Math.max(0,x-430000)*kRate+kFlat);
+  // 国保：区分別（医療＋支援金／子ども・子育て支援金／介護）に所得割＋均等割を計算し、区分ごとの賦課限度額を適用
+  const kEst=x=>{const b=Math.max(0,x-430000),n=Math.max(1,P.nIns||1);
+    const a=Math.min(P.capM||930000,b*(P.kRate||0)/100+(P.kFlat||0)*n);
+    const c=Math.min(P.capK||30000,b*(P.kcRate||0)/100+(P.kcFlat||0)*n);
+    const d=P.care?Math.min(P.capC||170000,b*(P.kdRate||0)/100+(P.kdFlat||0)):0;
+    return a+c+d;};
   R.kEst=kEst(Math.max(0,sum0));
   R.kokuho=R.kEst;                              // 基準調整は呼び出し側で
   if(P._kBaseDelta!=null) R.kokuho=Math.max(0,P._kBaseDelta+R.kEst);
   if(P._kFixed!=null) R.kokuho=P._kFixed;
-  const shaho=R.kokuho+P.nenkin+P.shokibo+P.ideco;
+  // 社会保険料控除は「その年に実際に支払う」国保料。実額入力がなければ概算額で代用
+  R.kokuhoDed=(P.kokuhoAct!=null&&P._kFixed==null)?P.kokuhoAct:R.kokuho;
+  const shaho=R.kokuhoDed+P.nenkin+P.shokibo+P.ideco;
   const n1=P.dep1/1, n2=P.dep2, n3=P.dep3;     // (人数は m:0 のため素の数)
   /* 所得税 */
   const kisoI=G<=4890000?1040000:G<=6550000?670000:G<=23500000?620000:G<=24000000?480000:G<=24500000?320000:G<=25000000?160000:0;
@@ -370,7 +384,7 @@ function renderNow(P,b,r){
    <tr><td>住民税（所得割＋均等割）</td><td>${yen(r.resident)}</td><td style="text-align:left;white-space:normal;font-size:12px">令和9年6月〜（4期 or 一括）。所得割${yen(r.resShotoku)}／均等割${yen(r.resKintou)}</td></tr>
    <tr><td>個人事業税</td><td>${yen(r.bizTax)}</td><td style="text-align:left;white-space:normal;font-size:12px">令和9年8月・11月。事業主控除290万円後 ${man(r.btBase,0)}</td></tr>
    <tr><td>消費税・地方消費税</td><td>${yen(r.consumption)}</td><td style="text-align:left;white-space:normal;font-size:12px">${P.ctMethod==='exempt'?'免税事業者（納税なし）':'令和9年3月31日まで'}</td></tr>
-   <tr class="sub"><td>国民健康保険料（概算）</td><td>${yen(r.kokuho)}</td><td style="text-align:left;white-space:normal;font-size:12px">今年の所得は来年度（令和9年6月〜）の保険料に反映</td></tr>
+   <tr class="sub"><td>国民健康保険料（所得ベースの年間見込み）</td><td>${yen(r.kokuho)}</td><td style="text-align:left;white-space:normal;font-size:12px">今年の所得は令和9年度（令和9年4月〜10年3月分）の保険料の算定に使われ、通知は通常6月ごろ。社会保険料控除に使う今年の支払額: ${yen(r.kokuhoDed)}${P.kokuhoAct==null?'（実額未入力のため概算で代用）':''}</td></tr>
    <tr class="sub"><td>国民年金保険料</td><td>${yen(r.nenkin)}</td><td></td></tr>
    <tr class="tot"><td>合計（税＋社保）</td><td>${yen(r.burden)}</td><td></td></tr>
   </table></div>
@@ -590,9 +604,9 @@ function renderAdvice(P,b,B,cur,tr,calcS,vr){
   savings.push(`<li>青色事業専従者給与：家族が実際に従事する場合、届出のうえ適正額を経費化（家族側の所得税・社保・扶養への影響も考慮）</li>`);
   add('good','⑤ 事前に使える節税・準備策（目標売上時の効果）',`<ul style="padding-left:18px;margin-top:4px">${savings.join('')}</ul><div class="note" style="margin-top:4px">年内（12月31日まで）に掛金払込が必要なものが多く、対象年の損益確定前に動くことが重要です。</div>`);
   // 国保
-  const kCap=P.kCap||1060000;
+  const kCap=(P.capM||930000)+(P.capK||30000)+(P.care?(P.capC||170000):0);
   add(tr.kokuho>=kCap*.98?'warn':'',`⑥ 国民健康保険料の増加`,
-    `目標売上時の国保料（概算）は <b style="display:inline">${yen(tr.kokuho)}</b>（現状比 ${sgn(tr.kokuho-cur.kokuho)}）${tr.kokuho>=kCap*.98?'で賦課限度額に到達します':''}。国保料は<b style="display:inline">前年所得を基に翌年度（6月〜）</b>に決まるため、増収の翌年に負担が来ます。国民年金基金・iDeCo・小規模企業共済は所得控除となり保険料の算定所得も下がります（国保の基礎は「所得−43万円」）。`);
+    `目標売上時の国保料（概算）は <b style="display:inline">${yen(tr.kokuho)}</b>（現状比 ${sgn(tr.kokuho-cur.kokuho)}）${tr.kokuho>=kCap*.98?'で賦課限度額に到達します':''}。国保料は<b style="display:inline">前年の所得を基に年度（4月〜翌3月分）の保険料が決まり、通常6月ごろ通知</b>されるため、増収の翌年度に負担が来ます。国保の所得割は「総所得金額等−43万円」が基礎で、青色申告特別控除は反映されますが、<b style="display:inline">小規模企業共済・iDeCo・社会保険料控除は算定基礎から引けません</b>（所得税・住民税は減っても国保料は下がらない点に注意）。区分ごとの賦課限度額（医療＋支援金93万円・子ども・子育て支援金3万円・介護17万円）に達するとそれ以上は増えません。`);
   // 予定納税
   add('warn',`⑦ 予定納税（増収の翌年に発生）`,
     `申告納税額が15万円以上になると、翌年から7月31日・11月30日に各1/3ずつの予定納税が始まります。目標売上時の所得税 ${yen(tr.incomeTax)} の場合、予定納税額（年合計の2/3）は ${tr.incomeTax>=150000?'約 <b style="display:inline">'+yen(fl(tr.incomeTax/3,100)*2)+'</b>':'発生しません'}。売上が減った場合は減額申請（7/1〜7/31）も可能です。`);
@@ -613,7 +627,7 @@ function renderNotes(){
   $('notes').innerHTML=`
   <p>■ 前提：個人事業主（居住者）・令和8年（2026年）分、東京都等の標準税率（住民税所得割10%・均等割6,000円［森林環境税含む］）。所得税の基礎控除は令和8年度改正後（合計所得489万円以下104万円／655万円以下67万円／2,350万円以下62万円…）、住民税の基礎控除は43万円で計算。</p>
   <p>■ 反映していないもの：配偶者特別控除・特定親族特別控除・雑損/寄附金（認定NPO等）控除・住宅ローン控除・源泉徴収済税額・配当/譲渡所得・事業用資産の特例・ふるさと納税のワンストップ特例・住民税の自治体独自の取扱い・令和9年分以降の防衛特別所得税。</p>
-  <p>■ 国保料は自治体・世帯構成で大きく異なるため、実額が分かる場合は④に入力してください。個人事業税の業種区分は都道府県の判定によります。消費税は売上を税抜、経費を税込と仮定した簡易計算です。</p>
+  <p>■ 国保料は区分別（医療＋支援金／子ども・子育て支援金／介護）の所得割・均等割・賦課限度額で概算し、初期値は令和8年度の渋谷区の公表料率です（子ども・子育て支援金分は令和8年度新設）。自治体・年度・加入者数で異なり、低所得の軽減や加入月数は反映していません。社会保険料控除には今年実際に支払う額（④に実額を入力）を使います。個人事業税の業種区分は都道府県の判定によります。消費税は売上を税抜、経費を税込と仮定した簡易計算です。</p>
   <p>■ 本ツールは概算の試算であり、税務申告・税務判断を保証するものではありません。実際の申告・意思決定にあたっては、最新の法令・通達を確認のうえ税理士等の専門家にご確認ください。</p>`;
 }
 
